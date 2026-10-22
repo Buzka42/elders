@@ -1,0 +1,612 @@
+[
+ {
+  "name": "logo_elders",
+  "src": "../../../world-of-meta/assets/final/logos/logo_elders_800.png",
+  "size": [
+   512,
+   256
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "logo_bloodsports",
+  "src": "../../../world-of-meta/assets/final/logos/logo_bloodsports_800.png",
+  "size": [
+   512,
+   256
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "elder_rank_01",
+  "src": "../../../world-of-meta/assets/final/ui/elder_rank_01.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "elder_rank_02",
+  "src": "../../../world-of-meta/assets/final/ui/elder_rank_02.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "elder_rank_03",
+  "src": "../../../world-of-meta/assets/final/ui/elder_rank_03.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "elder_rank_04",
+  "src": "../../../world-of-meta/assets/final/ui/elder_rank_04.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "elder_rank_05",
+  "src": "../../../world-of-meta/assets/final/ui/elder_rank_05.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "elder_rank_06",
+  "src": "../../../world-of-meta/assets/final/ui/elder_rank_06.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "elder_rank_07",
+  "src": "../../../world-of-meta/assets/final/ui/elder_rank_07.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "elder_rank_08",
+  "src": "../../../world-of-meta/assets/final/ui/elder_rank_08.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "elder_rank_09",
+  "src": "../../../world-of-meta/assets/final/ui/elder_rank_09.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "elder_rank_10",
+  "src": "../../../world-of-meta/assets/final/ui/elder_rank_10.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "elder_rank_11",
+  "src": "../../../world-of-meta/assets/final/ui/elder_rank_11.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "elder_rank_12",
+  "src": "../../../world-of-meta/assets/final/ui/elder_rank_12.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "elder_rank_13",
+  "src": "../../../world-of-meta/assets/final/ui/elder_rank_13.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "elder_rank_14",
+  "src": "../../../world-of-meta/assets/final/ui/elder_rank_14.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "crest_koth",
+  "src": "../../../world-of-meta/assets/final/ui/crest_koth_a.png",
+  "size": [
+   128,
+   128
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "crest_tram",
+  "src": "../../../world-of-meta/assets/final/ui/crest_tram_a.png",
+  "size": [
+   128,
+   128
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "crest_honorroad",
+  "src": "../../../world-of-meta/assets/final/ui/crest_honorroad_a.png",
+  "size": [
+   128,
+   128
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "crest_crossroads",
+  "src": "../../../world-of-meta/assets/final/ui/crest_crossroads_a.png",
+  "size": [
+   128,
+   128
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "crest_goldshire",
+  "src": "../../../world-of-meta/assets/final/ui/crest_goldshire_a.png",
+  "size": [
+   128,
+   128
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "crest_everlook",
+  "src": "../../../world-of-meta/assets/final/ui/crest_everlook_a.png",
+  "size": [
+   128,
+   128
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "crest_gadgetzan",
+  "src": "../../../world-of-meta/assets/final/ui/crest_gadgetzan_a.png",
+  "size": [
+   128,
+   128
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "crest_ratchet",
+  "src": "../../../world-of-meta/assets/final/ui/crest_ratchet_a.png",
+  "size": [
+   128,
+   128
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "crest_tournament",
+  "src": "../../../world-of-meta/assets/final/ui/crest_tournament_a.png",
+  "size": [
+   128,
+   128
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "crest_bloodsports",
+  "src": "../../../world-of-meta/assets/final/ui/crest_bloodsports_a.png",
+  "size": [
+   128,
+   128
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "badge_koth",
+  "src": "../../../world-of-meta/assets/final/ui/badge_koth.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "badge_tram",
+  "src": "../../../world-of-meta/assets/final/ui/badge_tram.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "badge_honorroad",
+  "src": "../../../world-of-meta/assets/final/ui/badge_honorroad.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "badge_crossroads",
+  "src": "../../../world-of-meta/assets/final/ui/badge_crossroads.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "badge_goldshire",
+  "src": "../../../world-of-meta/assets/final/ui/badge_goldshire.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "badge_tournament",
+  "src": "../../../world-of-meta/assets/final/ui/badge_tournament.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "badge_highroller",
+  "src": "../../../world-of-meta/assets/final/ui/badge_highroller.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "hof_laurel",
+  "src": "../../../world-of-meta/assets/final/ui/hof_laurel_a.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "frame_elders_01",
+  "src": "../../../world-of-meta/assets/final/ui/frame_elders_01_a.png",
+  "size": [
+   512,
+   256
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "icon_elders",
+  "src": "../../../world-of-meta/assets/raw/addon/icon_elders.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "icon_bloodsports",
+  "src": "../../../world-of-meta/assets/raw/addon/icon_bloodsports.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "tile_elders",
+  "src": "../../../world-of-meta/assets/raw/addon/tile_elders.png",
+  "size": [
+   256,
+   256
+  ],
+  "mode": "tile",
+  "out": "build"
+ },
+ {
+  "name": "tile_bloodsports",
+  "src": "../../../world-of-meta/assets/raw/addon/tile_bloodsports.png",
+  "size": [
+   256,
+   256
+  ],
+  "mode": "tile",
+  "out": "build"
+ },
+ {
+  "name": "header_elders",
+  "src": "../../../world-of-meta/assets/raw/addon/header_elders.png",
+  "size": [
+   512,
+   128
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "header_bloodsports",
+  "src": "../../../world-of-meta/assets/raw/addon/header_bloodsports.png",
+  "size": [
+   512,
+   128
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "footer_elders",
+  "src": "../../../world-of-meta/assets/raw/addon/footer_elders.png",
+  "size": [
+   512,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "footer_bloodsports",
+  "src": "../../../world-of-meta/assets/raw/addon/footer_bloodsports.png",
+  "size": [
+   512,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "portrait_elder",
+  "src": "../../../world-of-meta/assets/raw/addon/portrait_elder.png",
+  "size": [
+   256,
+   256
+  ],
+  "mode": "opaque",
+  "out": "build"
+ },
+ {
+  "name": "portrait_bookie",
+  "src": "../../../world-of-meta/assets/raw/addon/portrait_bookie.png",
+  "size": [
+   256,
+   256
+  ],
+  "mode": "opaque",
+  "out": "build"
+ },
+ {
+  "name": "glyph_leaf_full",
+  "src": "../../../world-of-meta/assets/raw/addon/glyph_leaf_full.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "glyph_leaf_empty",
+  "src": "../../../world-of-meta/assets/raw/addon/glyph_leaf_empty.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "glyph_blades_full",
+  "src": "../../../world-of-meta/assets/raw/addon/glyph_blades_full.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "glyph_blades_empty",
+  "src": "../../../world-of-meta/assets/raw/addon/glyph_blades_empty.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "seal_vote_up",
+  "src": "../../../world-of-meta/assets/raw/addon/seal_vote_up.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "seal_vote_down",
+  "src": "../../../world-of-meta/assets/raw/addon/seal_vote_down.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "seal_verified",
+  "src": "../../../world-of-meta/assets/raw/addon/seal_verified.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "seal_referee",
+  "src": "../../../world-of-meta/assets/raw/addon/seal_referee.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "seal_unverified",
+  "src": "../../../world-of-meta/assets/raw/addon/seal_unverified.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "icon_challenge",
+  "src": "../../../world-of-meta/assets/raw/addon/icon_challenge.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "icon_champion",
+  "src": "../../../world-of-meta/assets/raw/addon/icon_champion.png",
+  "size": [
+   64,
+   64
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "banner_victory",
+  "src": "../../../world-of-meta/assets/raw/addon/banner_victory.png",
+  "size": [
+   512,
+   128
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "banner_defeat",
+  "src": "../../../world-of-meta/assets/raw/addon/banner_defeat.png",
+  "size": [
+   512,
+   128
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "banner_sealed",
+  "src": "../../../world-of-meta/assets/raw/addon/banner_sealed.png",
+  "size": [
+   512,
+   128
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "ring_ledger",
+  "src": "../../../world-of-meta/assets/raw/addon/ring_ledger.png",
+  "size": [
+   512,
+   256
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "ring_chest",
+  "src": "../../../world-of-meta/assets/raw/addon/ring_chest.png",
+  "size": [
+   128,
+   128
+  ],
+  "mode": "key",
+  "out": "build"
+ }
+]
