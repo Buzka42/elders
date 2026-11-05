@@ -1,0 +1,22 @@
+<p><strong>The Elders watch your road.</strong></p>
+<p>Elders is a lightweight leveling companion for WoW Forever. It sits quietly in the background and records how you level — then shows it back to you in one clean panel.</p>
+<p><strong>What it tracks (per 1–10 … 51–60 bracket):</strong></p>
+<ul>
+<li>Pace: XP per hour, XP per kill, quest share, time per level, rested value</li>
+<li>Downtime: combat, travel, idle, eating, deaths, corpse runs</li>
+<li>Combat, economy, dungeons, talents — snapshots as you play</li>
+</ul>
+<p><strong>The ritual:</strong> every 10 levels the Elders ask three things — rate your last bracket, judge class insights from other players, optionally leave one of your own (280 chars). Your votes feed the <a href="https://worldofmeta.win/">World of Meta tierlists</a> and the R1–R14 elder ranks.</p>
+<p><strong>Your data, your control:</strong></p>
+<ul>
+<li>Random character IDs — no RealID, no chat scraping, no memory reading</li>
+<li>Syncs through the tiny Meta Uploader app (or a copy-paste export string)</li>
+<li>Everything visible on your World of Meta account page</li>
+</ul>
+<p><strong>Commands:</strong> <code>/elders</code> (panel) · <code>/elders ritual</code> · <code>/elders export</code> · <code>/elders sync</code><br><strong>Requires:</strong> <a href="https://github.com/Buzka42/elders/releases/download/v1.0.0/MetaUploaderSetup-1.0.0.exe">Meta Uploader</a> for automatic sync.<br><strong>Supports:</strong> WoW Forever. Bloodsports (duels, fight clubs, goblin-ring betting) is its sister addon — same account, same uploader.</p>
+<p><strong>Syncing: the Meta Uploader (open source).</strong> The addon itself never touches the network. The Meta Uploader is a tiny desktop app that reads the SavedVariables files the game already wrote to disk, uploads only new rows to World of Meta, and writes ranks, insights and acknowledgements back into your AddOns folder as the WorldOfMeta_Data addon. It never reads game memory, never sends keystrokes, never touches chat. Python 3.10+, standard library only.</p>
+<ul>
+<li>Windows: <a href="https://github.com/Buzka42/elders/releases/download/v1.0.0/MetaUploaderSetup-1.0.0.exe">MetaUploaderSetup-1.0.0.exe</a></li>
+<li>Linux: <a href="https://github.com/Buzka42/elders/releases/download/v1.0.0/meta-uploader-1.0.0-linux-x86_64.tar.gz">meta-uploader-1.0.0-linux-x86_64.tar.gz</a></li>
+<li>Source code (verify it yourself): <a href="https://github.com/Buzka42/elders/tree/v1.0.0/uploader">github.com/Buzka42/elders/tree/v1.0.0/uploader</a> — includes the full README (every file, every network call documented), unit tests, SHA256 checksums and the build scripts, so you can build the binaries yourself instead of trusting ours.</li>
+</ul>
