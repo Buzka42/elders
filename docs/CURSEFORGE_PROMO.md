@@ -16,7 +16,7 @@ background and records how you level — then shows it back to you in one clean 
 
 **The ritual:** every 10 levels the Elders ask three things — rate your last bracket,
 judge class insights from other players, optionally leave one of your own (280 chars).
-Your votes feed the World of Meta Hall of Fame and the R1–R14 elder ranks.
+Your votes feed the World of Meta tierlists and the R1–R14 elder ranks.
 
 **Your data, your control:**
 - Random character IDs — no RealID, no chat scraping, no memory reading
