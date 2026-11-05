@@ -69,3 +69,42 @@ autostart. See `packaging/README.md`.
 
 `python3 -m unittest discover -s uploader` (from the `elders` folder). It includes a mock-server end-to-end run. The last run
 passed 68 tests (2026-11-05).
+
+## Is it safe? (read this before running a game-side binary)
+
+Yes — and you don't have to take our word for it. The whole program is one file,
+`uploader/meta_uploader.py` (MIT licensed, this repo), Python standard library only.
+No compiled dependencies, no obfuscation, ~1400 lines you can read in one sitting.
+
+**Where everything lives on your machine:**
+
+| What | Windows | Linux / macOS |
+|---|---|---|
+| Config + install token | `%APPDATA%\meta-uploader\config.json` | `~/.config/meta-uploader/config.json` |
+| Log | same folder, `uploader.log` (rotated at 512 KB) | same |
+| Game data it reads | `...\World of Warcraft\_<flavor>_\WTF\Account\*\SavedVariables\{Elders,Bloodsports}.lua` | same layout under your Wine prefix / install |
+| What it writes into the game | `Interface\AddOns\WorldOfMeta_Data\{WorldOfMeta_Data.toc,Data.lua}` | same |
+| Autostart (only if you ask) | `HKCU\...\Run` value `WorldOfMetaUploader` | XDG autostart entry (Hyprland: `exec-once`) |
+
+**Exactly what it does, in order:** reads the two SavedVariables files the game itself
+wrote to disk → POSTs only new outbox rows plus per-character aggregates to
+`https://worldofmeta.win/api/ingest` (bearer install token, `--api` overrides the host) →
+GETs `/api/data` and rewrites the `WorldOfMeta_Data` addon so ranks flow back into the
+game. Link codes go to `/api/link` once and are never stored. Every request the program
+makes goes through one function, and `--dry-run` prints each payload instead of sending
+it — run any command with `--dry-run` first and inspect everything before a byte leaves.
+
+**What it never does:** no game-memory reading, no keystrokes, no mouse, no screenshots,
+no overlay, no `/reload`, no chat. The only `ctypes` use is the Windows named mutex
+(`WorldOfMetaUploader`) that keeps a second copy from running — that is all it is.
+The optional tray (`pystray`) is just an icon with Quit; without it the same loop runs
+in the console. The token file is created owner-only (`0600` on POSIX, asserted by test).
+
+**Verify it yourself in 5 minutes:**
+
+1. `python3 uploader/meta_uploader.py status` — shows what it found, sends nothing.
+2. `... once --dry-run` — prints the exact JSON it would POST. Compare with the tables
+   in `wom-backend/schema*.sql` (also MIT, public repo).
+3. Run from source for a week: `python3 uploader/meta_uploader.py daemon`. The release
+   binaries are built from this exact file (`packaging/*.spec`, CI builds attached to
+   each GitHub release) — same input, same behavior, or file a bug.
