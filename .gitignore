@@ -5,11 +5,12 @@ node_modules/
 .wrangler/
 build/
 dist/
+.venv*/
 _preview/
 # Artwork waits until it is approved and tested in game; build.py and convert.py regenerate these.
 Elders/Media/*.tga
 tools/MetaProbe/Art/
-uploader/packaging/icon.ico
+uploader/packaging/icon.png
 
 # pre-production: development files, kept on disk and not shared
 ELDERS.md

@@ -46,15 +46,21 @@ local function setupSettings()
   end
 end
 
+-- Tooltip line in a kit colour token ("good", "muted", ...); plain line if the kit is absent.
+local function tokenLine(tt, text, key)
+  local c = MK.UI and MK.UI.Tokens and MK.UI.Tokens[key]
+  if c then tt:AddLine(text, c[1], c[2], c[3]) else tt:AddLine(text) end
+end
+
 local function tooltip(tt)
-  tt:AddLine("|cff3fbf6aElders|r")
+  tokenLine(tt, "Elders", "good")
   local xph, gph = UI.Quick(UI.CurrentTab())
   tt:AddDoubleLine("XP per hour", xph)
   tt:AddDoubleLine("Gold per hour", gph)
   local n = A:PendingCount() or 0
   tt:AddDoubleLine("Waiting to sync", tostring(n))
-  tt:AddLine("Left-click: stats panel", 0.7, 0.7, 0.7)
-  tt:AddLine("Right-click: settings", 0.7, 0.7, 0.7)
+  tokenLine(tt, "Left-click: stats panel", "muted")
+  tokenLine(tt, "Right-click: settings", "muted")
 end
 
 function M:OnLogin()

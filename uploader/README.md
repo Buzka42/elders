@@ -53,9 +53,19 @@ A file that cannot be parsed (for example, the game is still writing it) is retr
 ## Windows build
 
 `packaging/` has the PyInstaller spec, the Inno Setup script and `build.ps1`. See `packaging/README.md`. The GitHub workflow
-`.github/workflows/uploader-windows.yml` (in the `elders` repo) runs only when started by hand.
+`.github/workflows/uploader-windows.yml` (in the `elders` repo) runs the unit tests and builds the installer on every
+push that touches `uploader/**`, or when started by hand.
+
+## Linux build
+
+`packaging/build-linux.sh` builds a one-file console binary with PyInstaller in a local venv:
+`packaging/dist/meta-uploader`, plus `meta-uploader-<VERSION>-linux-<arch>.tar.gz`. The default build is stdlib-only, and
+`--with-tray` also bundles pystray and Pillow. Install with `install-linux.sh [--autostart]` from the tarball. It puts the
+binary in `~/.local/bin` and adds an app-menu launcher (and, with `--autostart`, an XDG autostart entry). The launcher
+runs `daemon --tray`, which falls back to the console loop when there is no tray. Hyprland needs `exec-once` for
+autostart. See `packaging/README.md`.
 
 ## Tests
 
 `python3 -m unittest discover -s uploader` (from the `elders` folder). It includes a mock-server end-to-end run. The last run
-passed 62 tests (2026-10-22).
+passed 68 tests (2026-11-05).

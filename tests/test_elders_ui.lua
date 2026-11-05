@@ -205,4 +205,62 @@ T.test("toasts and export box and minimap", function()
   T.noErrors()
 end)
 
+T.test("rank preview: debug-only, session-only, never touches UI.Rank", function()
+  A.db.config.debug = false
+  SlashCmdList.ELDERS("rank 7")
+  T.eq(UI.rankOverride, nil, "ignored without debug")
+  A.db.config.debug = true
+  SlashCmdList.ELDERS("rank 7")
+  T.eq(UI.rankOverride, 7)
+  SlashCmdList.ELDERS("rank 99")
+  T.eq(UI.rankOverride, 14, "clamped")
+  T.eq(UI.Rank(ns.char.id), 1, "real rank unchanged")
+  SlashCmdList.ELDERS("rank")
+  T.eq(UI.rankOverride, nil, "cleared")
+  A.db.config.debug = false
+  T.noErrors()
+end)
+
+T.test("sync status: synced reads good, pending stays muted", function()
+  local keepColor, keepPending = MetaKit.UI.Color, A.PendingCount
+  local asked
+  -- header() runs before the rows render, so the first colour asked for after a refresh is the sync label's
+  MetaKit.UI.Color = function(_, key) asked = asked or key; return 1, 1, 1, 1 end
+  local n = 0
+  A.PendingCount = function() return n end
+  if not (EldersPanel or UI.Panel()) then SlashCmdList.ELDERS(""); SlashCmdList.ELDERS("") end
+  asked = nil
+  UI.RefreshPanel()
+  T.eq(asked, "good", "everything synced")
+  n, asked = 3, nil
+  UI.RefreshPanel()
+  T.eq(asked, "muted", "rows waiting")
+  MetaKit.UI.Color, A.PendingCount = keepColor, keepPending
+  T.noErrors()
+end)
+
+T.test("header name: auto width when it fits, capped short of the sync text when it doesn't", function()
+  if not (EldersPanel or UI.Panel()) then SlashCmdList.ELDERS(""); SlashCmdList.ELDERS("") end
+  local function find(f)
+    for _, k in ipairs(f._children or {}) do
+      if k._kind == "FontString" and type(k._text) == "string" and k._text:find(", level ") then return k end
+      local hit = find(k); if hit then return hit end
+    end
+  end
+  local keepName = ns.char.name
+  ns.char.name = "Chad"
+  UI.RefreshPanel()
+  local name = find(UI.Panel())
+  T.ok(name, "header name label found")
+  T.eq(name:GetWidth(), 0, "short name keeps auto width (no truncation)")
+  ns.char.name = string.rep("W", 80)
+  UI.RefreshPanel()
+  local w = name:GetWidth()
+  T.ok(w > 0 and w < name:GetStringWidth(), "long name capped")
+  ns.char.name = keepName
+  UI.RefreshPanel()
+  T.eq(name:GetWidth(), 0, "cap released when the name fits again")
+  T.noErrors()
+end)
+
 T.done()

@@ -1,7 +1,16 @@
 name: uploader-windows
-# Manual only until the artwork lands: build.ps1 needs icon.ico, which is not in the repo.
+# Builds the Windows installer on every push that touches the uploader, or by hand.
+# build.ps1 needs uploader/packaging/icon.ico in the repo.
 on:
+  push:
+    paths:
+      - "uploader/**"
   workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: uploader-windows-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: windows-latest
@@ -10,6 +19,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: uploader/packaging/requirements-build.txt
+      - name: Unit tests
+        run: python -m unittest discover -s uploader -v
       - name: Install Inno Setup
         run: choco install innosetup -y
       - name: Build installer

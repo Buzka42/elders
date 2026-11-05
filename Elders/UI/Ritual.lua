@@ -137,10 +137,12 @@ local function buildStep2(s, f)
     e:SetPoint("TOPLEFT", f, "TOPLEFT", 8, -44)
     return
   end
-  for i, ins in ipairs(s.insights) do
-    local y = -30 - (i - 1) * 62
-    local txt = MK.UI.Label(f, { text = U.Truncate(ins.text, MAX_TEXT), font = "small", justify = "LEFT", wrap = true })
-    txt:SetPoint("TOPLEFT", f, "TOPLEFT", 8, y)
+  -- Each insight block chains under the previous one (text wraps to ~4 lines at 280 letters), so its buttons
+  -- always sit 6 px under its own text and never overlap it.
+  local prev
+  for _, ins in ipairs(s.insights) do
+    local txt = MK.UI.Label(f, { text = U.Truncate(ins.text, MAX_TEXT), font = "small", color = "text", justify = "LEFT", wrap = true })
+    if prev then txt:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -10) else txt:SetPoint("TOPLEFT", f, "TOPLEFT", 8, -30) end
     txt:SetWidth(408)
     local btns = {}
     local function pick(v)
@@ -151,10 +153,11 @@ local function buildStep2(s, f)
     for j, d in ipairs(defs) do
       btns[d[1]] = MK.UI.Button(f, { text = d[2], width = 96, height = 24, skin = UI.SKIN,
         onClick = function() pick(d[1]) end })
-      btns[d[1]]:SetPoint("TOPLEFT", f, "TOPLEFT", 8 + (j - 1) * 102, y - 32)
+      btns[d[1]]:SetPoint("TOPLEFT", txt, "BOTTOMLEFT", (j - 1) * 102, -6)
     end
     local sk = MK.UI.Button(f, { text = "Skip", width = 70, height = 24, skin = UI.SKIN, onClick = function() pick(nil) end })
-    sk:SetPoint("TOPLEFT", f, "TOPLEFT", 8 + 2 * 102, y - 32)
+    sk:SetPoint("TOPLEFT", txt, "BOTTOMLEFT", 2 * 102, -6)
+    prev = btns[1]
   end
 end
 
@@ -183,7 +186,7 @@ local function open(b, force)
   local class = ns.char and ns.char.class
   local s = { bracket = b, pve = 0, pvp = 0, votes = {}, text = "", step = 1, steps = {}, insights = insightsFor(class) }
   R.cur = s
-  local head = MK.UI.Window{ skin = UI.SKIN, width = 440, height = 340, title = "The Elders ask",
+  local head = MK.UI.Window{ skin = UI.SKIN, width = 440, height = 380, title = "The Elders ask",
     subtitle = string.format("Levels %d to %d", lo, hi),
     onClose = function() if s.shown and not s.done then s.done = true; R.cur = nil end end }
   s.head = head

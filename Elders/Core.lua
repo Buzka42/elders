@@ -79,6 +79,11 @@ function Agg.Refresh()
   level = ns.char.level or MK.Call(UnitLevel, "player") or 1
 end
 
+-- OnLogin runs behind the loading screen where the realm APIs can be unreadable, leaving the identity unresolved.
+-- Re-resolve once the world is loaded (every loading screen): Char() migrates/corrects on its first resolved call.
+-- Registered here (before the collector files load) so later PLAYER_ENTERING_WORLD handlers see the refreshed record.
+A:On("PLAYER_ENTERING_WORLD", function() if A.db then Agg.Refresh() end end)
+
 function Agg.Level() return level end
 function Agg.SetLevel(l) level = l; if ns.char then ns.char.level = l end end
 
@@ -167,12 +172,13 @@ A:Command("debug", "debug - toggle debug output", function()
   A:Print("debug " .. (A.db.config.debug and "on" or "off"))
 end)
 
--- Export payload shared by the UI and the uploader fallback.
+-- Export payload shared by the UI and the uploader fallback. char.key is the SavedVariables key ("Name-Realm",
+-- surname included), sent whole so the site files the paste under the same character the uploader would.
 function ns.ExportPayload()
   local c = ns.char
   return {
     v = 1, addon = ADDON, install = A.db.installId, ruleset = c.ruleset,
-    char = { id = c.id, name = c.name, realm = c.realm, class = c.class, race = c.race, faction = c.faction, level = c.level },
-    brackets = c.brackets, levels = c.levels,
+    char = { key = A.charKey, id = c.id, name = c.name, realm = c.realm, class = c.class, race = c.race, faction = c.faction, level = c.level },
+    brackets = c.brackets, levels = c.levels, played = c.played,
   }
 end

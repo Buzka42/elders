@@ -1,0 +1,4 @@
+# Pinned build dependencies for the Windows installer (build.ps1). Bump deliberately, then rebuild and retest.
+pyinstaller==6.22.3
+pystray==0.19.5
+Pillow==13.0.0

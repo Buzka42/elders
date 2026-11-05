@@ -1,8 +1,14 @@
-# Build the Windows installer. Usage: powershell -File packaging\build.ps1 [-Version 0.1.0]
-param([string]$Version = "0.1.0")
+# Build the Windows installer. Usage: powershell -File uploader\packaging\build.ps1
+# The version comes only from VERSION in meta_uploader.py (same as build-linux.sh).
 $ErrorActionPreference = "Stop"
 $Here = $PSScriptRoot
 $Root = Split-Path $Here -Parent
+
+$Match = Select-String -CaseSensitive -Path (Join-Path $Root "meta_uploader.py") -Pattern '^VERSION = "(\d+\.\d+\.\d+)"$' |
+    Select-Object -First 1
+if (-not $Match) { throw "VERSION not found in meta_uploader.py" }
+$Version = $Match.Matches[0].Groups[1].Value
+Write-Host "Building version $Version"
 $Venv = Join-Path $Here ".venv"
 $Bin = Join-Path $Here "build\bin"
 
@@ -13,8 +19,9 @@ function Run([string]$exe, [string[]]$argv) {
 
 Run "python" @("-m", "venv", $Venv)
 $Py = Join-Path $Venv "Scripts\python.exe"
-Run $Py @("-m", "pip", "install", "--upgrade", "pip", "pyinstaller")
-Run $Py @("-m", "pip", "install", "-r", (Join-Path $Root "requirements-tray.txt"))
+Run $Py @("-m", "pip", "install", "--upgrade", "pip")
+# Pinned PyInstaller, pystray and Pillow so CI builds are reproducible.
+Run $Py @("-m", "pip", "install", "-r", (Join-Path $Here "requirements-build.txt"))
 # icon.ico is built once from the approved uploader icon: make_icon.py SOURCE.png
 if (-not (Test-Path (Join-Path $Here "icon.ico"))) {
     throw "icon.ico missing: run  $Py make_icon.py <path to the uploader icon>  first"

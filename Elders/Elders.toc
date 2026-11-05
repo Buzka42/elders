@@ -2,7 +2,7 @@
 ## Title: |cff3fbf6aElders|r
 ## Notes: Passive leveling stats per level bracket + the Elders ritual every 10 levels. Feeds World of Meta.
 ## Author: World of Meta
-## Version: 0.1.0
+## Version: 1.0.0
 ## SavedVariables: EldersDB
 ## OptionalDeps: WorldOfMeta_Data
 ## IconTexture: Interface\AddOns\Elders\Media\icon_elders

@@ -1,11 +1,15 @@
-; World of Meta Uploader installer (Inno Setup 6). Compile with ISCC.exe; build.ps1 overrides AppVersion.
+; World of Meta Uploader installer (Inno Setup 6). Build with build.ps1, which passes /DAppVersion from
+; VERSION in meta_uploader.py. There is no default so a stale version can never ship.
 #ifndef AppVersion
-  #define AppVersion "0.1.0"
+  #error AppVersion is not set: build with build.ps1, or pass ISCC /DAppVersion=x.y.z
 #endif
 #define AppName "World of Meta Uploader"
 #define Bin "build\bin"
 
 [Setup]
+; Fixed forever: upgrades and uninstall find the existing install by this id, not by the name. The doubled
+; opening brace is Inno's escape for a literal "{".
+AppId={{D3786131-74B3-4E3E-B73D-E987B358E4F0}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher=World of Meta
@@ -19,6 +23,9 @@ UninstallDisplayIcon={app}\icon.ico
 Compression=lzma2
 SolidCompression=yes
 DisableProgramGroupPage=yes
+; Same name as APP_NAME in meta_uploader.py: every running daemon (tray or console) holds this mutex, so setup and
+; uninstall ask the user to quit it instead of failing on "file in use".
+AppMutex=WorldOfMetaUploader
 
 [Tasks]
 ; Same GroupDescription + exclusive flag renders as radio buttons.
@@ -31,10 +38,12 @@ Name: autostart; Description: "Start the daemon when I sign in to Windows (backg
 Source: "{#Bin}\MetaUploader.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#Bin}\MetaUploaderTray.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "icon.ico"; DestDir: "{app}"; Flags: ignoreversion
-Source: "README.md"; DestDir: "{app}"; Flags: ignoreversion isreadme
+; Short user-only readme; packaging/README.md is maintainer docs and is not shipped.
+Source: "README-user.txt"; DestDir: "{app}"; DestName: "README.txt"; Flags: ignoreversion isreadme
 
 [Icons]
-Name: "{group}\World of Meta Uploader"; Filename: "{app}\MetaUploaderTray.exe"; IconFilename: "{app}\icon.ico"
+; The CLI requires a subcommand; without one the windowless tray exe would exit silently.
+Name: "{group}\World of Meta Uploader"; Filename: "{app}\MetaUploaderTray.exe"; Parameters: "daemon --tray"; IconFilename: "{app}\icon.ico"
 ; cmd /k keeps the console open so the output stays visible.
 ; TODO verify on Windows: quoting of the cmd /k parameter string.
 Name: "{group}\Sync now"; Filename: "{cmd}"; Parameters: "/k """"{app}\MetaUploader.exe"" once"""; IconFilename: "{app}\icon.ico"
@@ -49,7 +58,9 @@ Filename: "{app}\MetaUploaderTray.exe"; Parameters: "daemon --tray"; Flags: nowa
 
 [UninstallRun]
 ; The user's config (holds the link token) is deliberately NOT removed.
+; Stop both the tray and any console daemon/sync so no exe is locked while files are removed.
 Filename: "{sys}\taskkill.exe"; Parameters: "/IM MetaUploaderTray.exe /F"; Flags: runhidden; RunOnceId: "KillTray"
+Filename: "{sys}\taskkill.exe"; Parameters: "/IM MetaUploader.exe /F"; Flags: runhidden; RunOnceId: "KillConsole"
 Filename: "{app}\MetaUploader.exe"; Parameters: "autostart off"; Flags: runhidden; RunOnceId: "AutostartOff"
 
 [Code]

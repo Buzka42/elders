@@ -12,6 +12,9 @@ local DASH = UI.DASH
 
 local MAX_BRACKET = 6
 local PANEL_W = 460
+-- 600 tall: the stat list viewport is PANEL_H - 157 (title 36, gutters 16, header+tabs 72, footer 33) = 443 px,
+-- enough for Pace + Downtime with every sub-line (2 x 32 headers + 5 x 30 + 9 x 22 + 30 = 442) on the first screen.
+local PANEL_H = 600
 local ACT_COPPER_IN = { "loot", "vendor", "quest", "mail", "trade", "ah", "otherIn" }
 local ACT_COPPER_OUT = { "repair", "buy", "taxi", "train", "otherOut" }
 
@@ -213,7 +216,7 @@ local function header()
   if not (c and hdr.name) then return end
   if hdr.class then pcall(hdr.class.SetClass, hdr.class, c.class) end
   hdr.name:SetText((c.name or UnitName and UnitName("player") or "?") .. ", level " .. (ns.Agg.Level() or 1))
-  local rank = UI.Rank(c.id)
+  local rank = UI.rankOverride or UI.Rank(c.id)
   hdr.rank:SetText(UI.RankName(rank))
   if hdr.icon then
     local tex = UI.Art(string.format("elder_rank_%02d", rank))
@@ -221,6 +224,11 @@ local function header()
   end
   local n = A:PendingCount() or 0
   hdr.pending:SetText(n > 0 and (n .. " rows waiting to sync") or "Everything is synced")
+  hdr.pending:SetTextColor(MK.UI.Color(UI.SKIN, n > 0 and "muted" or "good"))
+  -- name stays auto-width (SetWidth(0)); cap it only when name + class icon would reach the sync text
+  local room = (PANEL_W - 16) - 40 - (6 + 14) - 12 - (hdr.pending:GetStringWidth() or 0)
+  hdr.name:SetWidth(0)
+  if (hdr.name:GetStringWidth() or 0) > room then hdr.name:SetWidth(room) end
 end
 
 local function refresh()
@@ -239,7 +247,7 @@ local function build()
   UI.ApplyTheme()
   local cfg = A.db.config
   cfg.panel = cfg.panel or {}
-  win = MK.UI.Window{ name = "EldersPanel", skin = UI.SKIN, width = PANEL_W, height = 560,
+  win = MK.UI.Window{ name = "EldersPanel", skin = UI.SKIN, width = PANEL_W, height = PANEL_H,
     title = "The Elders", subtitle = "What the road has taught you", db = cfg.panel }
   local c = win.content
   local inner = PANEL_W - 16 -- window gutter 8 on each side
@@ -253,11 +261,12 @@ local function build()
   hdr.name:SetPoint("TOPLEFT", c, "TOPLEFT", 40, -2)
   hdr.rank = MK.UI.Label(c, { text = "", font = "small", color = "muted", justify = "LEFT" })
   hdr.rank:SetPoint("TOPLEFT", c, "TOPLEFT", 40, -20)
+  -- sync status alone at the row's top-right (centred on the name line); the class icon sits after the name
   hdr.pending = MK.UI.Label(c, { text = "", font = "small", color = "muted", justify = "RIGHT" })
-  hdr.pending:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, -2)
+  hdr.pending:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, -4)
   if MK.UI.ClassIcon then
-    hdr.class = MK.UI.ClassIcon(c, 16)
-    hdr.class:SetPoint("BOTTOMRIGHT", c, "TOPRIGHT", 0, -32)
+    hdr.class = MK.UI.ClassIcon(c, 14)
+    hdr.class:SetPoint("LEFT", hdr.name, "RIGHT", 6, 0)
   end
 
   tab = tab or UI.CurrentTab()
@@ -269,15 +278,15 @@ local function build()
   end })
   tabs:SetPoint("TOPLEFT", c, "TOPLEFT", 0, -40)
 
-  rows = MK.UI.StatRows(c, { skin = UI.SKIN })
+  rows = MK.UI.StatRows(c, { skin = UI.SKIN, railGap = 6 }) -- 6 px between rules/values and the scrollbar
   rows:SetPoint("TOPLEFT", c, "TOPLEFT", 0, -72)
-  rows:SetPoint("BOTTOMRIGHT", c, "BOTTOMRIGHT", 0, 32)
+  rows:SetPoint("BOTTOMRIGHT", c, "BOTTOMRIGHT", 0, 33) -- 8 px above the lifted buttons
 
-  -- three equal buttons across the content, 8 px apart, flush with the content bottom (8 px above the window edge)
+  -- three equal buttons across the content, 8 px apart, 8 px of clear space above the window's 1 px bottom border
   local bw = (inner - 16) / 3
   local function button(text, slot, onClick, tip)
     local btn = MK.UI.Button(c, { text = text, width = bw, height = 24, onClick = onClick, tooltip = tip, skin = UI.SKIN })
-    btn:SetPoint("BOTTOMLEFT", c, "BOTTOMLEFT", (slot - 1) * (bw + 8), 0)
+    btn:SetPoint("BOTTOMLEFT", c, "BOTTOMLEFT", (slot - 1) * (bw + 8), 1)
     return btn
   end
   button("Sync", 1, function() ReloadUI() end, "Reload the interface so the Meta Uploader can pick up new data.")
@@ -297,3 +306,21 @@ A:Listen("TOGGLE_PANEL", function()
 end)
 
 UI.Panel = function() return win end
+
+-- TEST ONLY: preview another rank badge in the panel header. Needs debug mode; lives in memory for this session
+-- (never saved, never exported or synced, UI.Rank itself is untouched). "/elders rank" with no number clears it.
+A:Command("rank", "rank N - preview rank badge N in the panel (testing, debug mode only)", function(arg)
+  if not A.db.config.debug then
+    A:Print("rank preview is a test tool: turn on /elders debug first.")
+    return
+  end
+  local n = tonumber(arg)
+  if not n then
+    UI.rankOverride = nil
+    A:Print("rank preview off.")
+  else
+    UI.rankOverride = U.Clamp(math.floor(n), 1, 14)
+    A:Print("previewing rank " .. UI.rankOverride .. " (" .. UI.RankName(UI.rankOverride) .. "), this session only.")
+  end
+  refresh()
+end)
