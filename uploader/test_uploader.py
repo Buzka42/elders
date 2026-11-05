@@ -306,7 +306,7 @@ class DataLuaTests(unittest.TestCase):
             toc = (d / "WorldOfMeta_Data.toc").read_text()
             self.assertIn("## Interface: 16001, 120100", toc)
             self.assertTrue(toc.rstrip().endswith("Data.lua"))
-            self.assertIn("WorldOfMetaData", (d / "Data.lua").read_text())
+            self.assertIn("WorldOfMetaData", (d / "Data.lua").read_text(encoding="utf-8"))
             self.assertFalse(mu.write_data_addon(root, self.DATA, {}))  # unchanged -> untouched
             changed = dict(self.DATA, generatedAt=1760009999)
             self.assertFalse(mu.write_data_addon(root, changed, {}))   # only the timestamp differs
@@ -555,7 +555,9 @@ class AutoLinkTests(unittest.TestCase):
         # the token goes only into the config file, which is the only file the uploader writes for it
         self.assertEqual(json.loads(self.cfg.path.read_text())["token"], self.SECRET)
         self.assertEqual(sorted(p.name for p in self.cfg.path.parent.iterdir()), ["config.json"])
-        self.assertEqual(self.cfg.path.stat().st_mode & 0o777, 0o600)
+        if os.name != "nt":
+            # POSIX-only: Windows has no owner-only file modes (gives 0o666).
+            self.assertEqual(self.cfg.path.stat().st_mode & 0o777, 0o600)
 
     def test_unreachable_api_does_not_crash_a_watch_pass(self):
         root = make_wow(self.dir / "wow", flavors=("_classic_",))
