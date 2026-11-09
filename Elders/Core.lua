@@ -13,7 +13,12 @@ Elders = A -- global for debugging (/dump Elders.db)
 -- Schema
 
 local DEFAULTS = {
-  config = { ritual = true, toasts = true, panel = {} },
+  config = {
+    ritual = true, toasts = true, panel = {},
+    eldersAnnounce = "say",                       -- say | group | off: where Announce.lua puts level-up / bracket lines
+    announceLevel = true, announceBracket = true,
+    chat = MK.Chat and MK.Chat.Defaults("elders") or {},
+  },
   votes = {},        -- [insightId] = 1 | -1, dedupe across characters
 }
 

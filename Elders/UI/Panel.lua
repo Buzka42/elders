@@ -1,5 +1,5 @@
 -- The Elders stats panel: bracket tabs (1-10 ... 51-60, All) over StatRows sections computed from the raw bracket sums.
--- Pure math lives in UI.Sections (no frames), the window is created lazily on first TOGGLE_PANEL.
+-- Pure math lives in UI.Sections (no frames), the section is built lazily when the shared shell first shows it.
 --
 -- CONTRACT NOTE: "All" sums every bracket; rates always divide by bracket `sec` (hours = sec / 3600) and show "—" under 60 s.
 
@@ -11,10 +11,6 @@ local A = ns.A
 local DASH = UI.DASH
 
 local MAX_BRACKET = 6
-local PANEL_W = 460
--- 600 tall: the stat list viewport is PANEL_H - 157 (title 36, gutters 16, header+tabs 72, footer 33) = 443 px,
--- enough for Pace + Downtime with every sub-line (2 x 32 headers + 5 x 30 + 9 x 22 + 30 = 442) on the first screen.
-local PANEL_H = 600
 local ACT_COPPER_IN = { "loot", "vendor", "quest", "mail", "trade", "ah", "otherIn" }
 local ACT_COPPER_OUT = { "repair", "buy", "taxi", "train", "otherOut" }
 
@@ -206,10 +202,22 @@ function UI.CurrentTab()
 end
 
 ---------------------------------------------------------------------------
--- Window
+-- Shared shell adapter
+--
+-- Elders is one tab ("elders") of the shared World of Meta shell (MetaKit UI.SharedShell) with one section, "overview":
+-- the character row, the bracket tab strip, the stat rows and the Sync / Export / Settings buttons, built once into
+-- the section's host frame. The standalone EldersPanel window is gone; UI.Panel() returns the section host frame.
+-- CONTRACT NOTE: TOGGLE_PANEL's argument is a section id ("overview"); none = toggle the window on the Elders tab.
 
-local win, rows, tabs, tab
+local TAB, SECTION = "elders", "overview"
+local FALLBACK_W = 640 -- pane width when the host has no measured size yet at build time
+
+local host, rows, tabs, tab, innerW
+local registered, ticking = false, false
+local lastSummary
 local hdr = {}
+
+local function shell() return MK.UI and MK.UI._sharedShell end
 
 local function header()
   local c = ns.char
@@ -226,31 +234,62 @@ local function header()
   hdr.pending:SetText(n > 0 and (n .. " rows waiting to sync") or "Everything is synced")
   hdr.pending:SetTextColor(MK.UI.Color(UI.SKIN, n > 0 and "muted" or "good"))
   -- name stays auto-width (SetWidth(0)); cap it only when name + class icon would reach the sync text
-  local room = (PANEL_W - 16) - 40 - (6 + 14) - 12 - (hdr.pending:GetStringWidth() or 0)
+  local room = (innerW or FALLBACK_W) - 40 - (6 + 14) - 12 - (hdr.pending:GetStringWidth() or 0)
   hdr.name:SetWidth(0)
   if (hdr.name:GetStringWidth() or 0) > room then hdr.name:SetWidth(room) end
 end
 
 local function refresh()
-  if not (win and rows) then return end
+  if not (host and rows) then return end
   header()
   rows:SetSections(UI.Sections(tab))
 end
 UI.RefreshPanel = refresh
 
-local function build()
-  if win then return win end
-  if not (MK.UI and MK.UI.Window and MK.UI.StatRows and MK.UI.Tabs) then
+-- Sidebar summary block: level, time played, Elders rank.
+local function summary()
+  local c = ns.char
+  if not c then return {} end
+  local played = c.played and c.played.total
+  return {
+    { "Level", tostring(ns.Agg.Level() or 1) },
+    { "Played", type(played) == "number" and played > 0 and U.Duration(played) or DASH },
+    { "Rank", UI.RankName(UI.rankOverride or UI.Rank(c.id)) },
+  }
+end
+UI.ShellSummary = summary
+
+local function summarySignature()
+  local parts = {}
+  for _, l in ipairs(summary()) do parts[#parts + 1] = tostring(l[2]) end
+  return table.concat(parts, "|")
+end
+
+-- Refreshes the section when it is the one in view; re-lays the sidebar summary only when its numbers changed.
+local function refreshCurrent()
+  local s = shell()
+  if not (s and s:IsShown() and s.current == TAB) then return end
+  local ok, err = pcall(refresh)
+  if not ok then A:Error("overview", err) end
+  local sig = summarySignature()
+  if sig ~= lastSummary then
+    lastSummary = sig
+    pcall(s.Refresh, s)
+  end
+end
+
+-- Section build: runs once, into the shell's host frame for the section.
+local function build(c)
+  if host then return host end
+  if not (MK.UI and MK.UI.StatRows and MK.UI.Tabs and MK.UI.Label and MK.UI.Button) then
     A:Print("The interface kit is not loaded, so the panel cannot open.")
-    return nil
+    error("interface kit missing", 0)
   end
   UI.ApplyTheme()
-  local cfg = A.db.config
-  cfg.panel = cfg.panel or {}
-  win = MK.UI.Window{ name = "EldersPanel", skin = UI.SKIN, width = PANEL_W, height = PANEL_H,
-    title = "The Elders", subtitle = "What the road has taught you", db = cfg.panel }
-  local c = win.content
-  local inner = PANEL_W - 16 -- window gutter 8 on each side
+  host = c
+  local w = c.GetWidth and c:GetWidth() or 0
+  if type(w) ~= "number" or w < 300 then w = FALLBACK_W end
+  innerW = w
 
   -- character row (32 px): rank badge left, name and rank beside it, sync status right
   if MK.UI.Icon then
@@ -273,7 +312,7 @@ local function build()
   local labels = {}
   for i = 1, MAX_BRACKET do labels[i] = U.BracketLabel(i) end
   labels[MAX_BRACKET + 1] = "All"
-  tabs = MK.UI.Tabs(c, { labels = labels, skin = UI.SKIN, width = inner, onSelect = function(i)
+  tabs = MK.UI.Tabs(c, { labels = labels, skin = UI.SKIN, width = innerW, onSelect = function(i)
     if type(i) == "number" and i ~= tab then tab = i; refresh() end
   end })
   tabs:SetPoint("TOPLEFT", c, "TOPLEFT", 0, -40)
@@ -282,8 +321,8 @@ local function build()
   rows:SetPoint("TOPLEFT", c, "TOPLEFT", 0, -72)
   rows:SetPoint("BOTTOMRIGHT", c, "BOTTOMRIGHT", 0, 33) -- 8 px above the lifted buttons
 
-  -- three equal buttons across the content, 8 px apart, 8 px of clear space above the window's 1 px bottom border
-  local bw = (inner - 16) / 3
+  -- three equal buttons (at most 150 px each), 8 px apart, along the section's bottom edge
+  local bw = math.min(150, (innerW - 16) / 3)
   local function button(text, slot, onClick, tip)
     local btn = MK.UI.Button(c, { text = text, width = bw, height = 24, onClick = onClick, tooltip = tip, skin = UI.SKIN })
     btn:SetPoint("BOTTOMLEFT", c, "BOTTOMLEFT", (slot - 1) * (bw + 8), 1)
@@ -294,18 +333,51 @@ local function build()
   button("Settings", 3, function() UI.OpenSettings() end)
 
   pcall(tabs.Select, tabs, tab)
-  win:HookScript("OnShow", refresh)
-  A:Every(5, function() if win:IsShown() then refresh() end end)
-  return win
+  if not ticking then
+    ticking = true
+    A:Every(5, refreshCurrent)
+  end
+  return host
 end
 
-A:Listen("TOGGLE_PANEL", function()
-  if not build() then return end
-  win:Toggle()
-  if win:IsShown() then refresh() end
-end)
+local function register()
+  if registered then return true end
+  local k = MK.UI
+  if not (k and k.RegisterSharedTab and k.RegisterSharedSection and k.SharedShell) then return false end
+  registered = true
+  k.SharedShellNamespace(ns)
+  k.RegisterSharedTab({ id = TAB, label = "Elders", owner = ADDON, order = 2, summary = summary })
+  k.RegisterSharedSection({ tab = TAB, id = SECTION, label = "Overview", order = 1,
+    icon = "Interface\\Icons\\INV_Misc_Book_09", build = build, onShow = function() refreshCurrent() end })
+  return true
+end
+UI.RegisterShared = register
 
-UI.Panel = function() return win end
+function UI.SharedShell()
+  if not register() then
+    A:Print("UI kit missing - reinstall the addon.")
+    return nil
+  end
+  local cfg = A.db.config
+  cfg.shell = cfg.shell or {}
+  return MK.UI.SharedShell(cfg.shell, ns) -- the first addon to create the shell owns its saved position
+end
+
+-- section = "overview" (open on it, never closes) or nil (toggle the window on the Elders tab).
+function UI.Open(section)
+  if not UI.SharedShell() then return end
+  if section ~= SECTION then section = nil end -- an unknown id just toggles
+  MK.UI.SharedShellOpen(A.db.config.shell, ns, TAB, section)
+  refreshCurrent()
+end
+
+A:Listen("TOGGLE_PANEL", UI.Open)
+
+-- registered at login so the tab exists before anything opens the shell
+local M = A:NewModule("UIPanel")
+function M:OnLogin() register() end
+
+UI.Panel = function() return host end
 
 -- TEST ONLY: preview another rank badge in the panel header. Needs debug mode; lives in memory for this session
 -- (never saved, never exported or synced, UI.Rank itself is untouched). "/elders rank" with no number clears it.

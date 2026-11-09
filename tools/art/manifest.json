@@ -608,5 +608,35 @@
   ],
   "mode": "key",
   "out": "build"
+ },
+ {
+  "name": "logo_main",
+  "src": "../../../world-of-meta/assets/final/logos/logo_main_800.png",
+  "size": [
+   512,
+   256
+  ],
+  "mode": "key",
+  "out": "build"
+ },
+ {
+  "name": "logo_m",
+  "src": "prepared/logo_m_medallion.png",
+  "size": [
+   256,
+   256
+  ],
+  "mode": "opaque",
+  "out": "build"
+ },
+ {
+  "name": "ornament_corner",
+  "src": "prepared/ornament_corner_tl.png",
+  "size": [
+   128,
+   128
+  ],
+  "mode": "key",
+  "out": "build"
  }
 ]

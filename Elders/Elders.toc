@@ -2,7 +2,7 @@
 ## Title: |cff3fbf6aElders|r
 ## Notes: Passive leveling stats per level bracket + the Elders ritual every 10 levels. Feeds World of Meta.
 ## Author: World of Meta
-## Version: 1.0.0
+## Version: 1.1.0
 ## SavedVariables: EldersDB
 ## OptionalDeps: WorldOfMeta_Data
 ## IconTexture: Interface\AddOns\Elders\Media\icon_elders
@@ -17,6 +17,7 @@ Libs\MetaKit\Data\GlobalStringsFallback.lua
 Libs\MetaKit\Strings.lua
 Libs\MetaKit\Codec.lua
 Libs\MetaKit\Comm.lua
+Libs\MetaKit\Chat.lua
 Libs\MetaKit\Lobby.lua
 Libs\MetaKit\Venue.lua
 Libs\MetaKit\UI\Theme.lua
@@ -30,6 +31,8 @@ Libs\MetaKit\UI\Minimap.lua
 Libs\MetaKit\UI\Settings.lua
 Libs\MetaKit\UI\ExportBox.lua
 Libs\MetaKit\UI\Demo.lua
+Libs\MetaKit\UI\Shell.lua
+Libs\MetaKit\Ext.lua
 Media.lua
 Data\Spells.lua
 Data\Dungeons.lua
@@ -41,6 +44,7 @@ Collect\Economy.lua
 Collect\Dungeon.lua
 Collect\Build.lua
 Collect\Social.lua
+Announce.lua
 UI\Theme.lua
 UI\Panel.lua
 UI\Ritual.lua

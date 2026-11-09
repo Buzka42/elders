@@ -1,0 +1,8 @@
+## Interface: 16001, 120100
+## Title: |cffb8862bWoM Example Market|r
+## Notes: Example extension for the World of Meta addon API: a "First blood" Ring market and a shell section stub. Not installed by tools/build.py.
+## Author: World of Meta
+## Version: 1.0.0
+## OptionalDeps: Elders, Bloodsports
+
+WomExampleMarket.lua

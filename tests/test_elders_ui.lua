@@ -3,6 +3,8 @@ local T = dofile(os.getenv("WOW_STUB") or "tests/wow_stub.lua")
 local ns = T.LoadAddon("Elders/Elders.toc")
 local A = ns.A
 local UI = ns.UI
+-- the stub says no addon is loaded; the shared shell shows a tab only while its owner addon is
+C_AddOns.IsAddOnLoaded = function(n) return n == "Elders" end
 
 local realKit = MetaKit.UI.Window ~= nil
 local rec = { toasts = {}, exports = {}, heads = {}, sections = nil, minimap = nil }
@@ -107,11 +109,14 @@ T.test("quick rates for the minimap", function()
   T.eq(gold, MetaKit.Util.Money(25000))
 end)
 
-T.test("panel opens, closes and switches every tab", function()
+T.test("panel opens in the shared shell, closes and switches every tab", function()
   SlashCmdList.ELDERS("")
-  local w = EldersPanel or UI.Panel()
-  T.ok(w, "panel exists")
-  T.ok(w:IsShown())
+  local shell = MetaKit.UI._sharedShell
+  T.ok(shell, "shared shell created")
+  local w = UI.Panel()
+  T.ok(w, "overview section built")
+  T.ok(shell:IsShown())
+  T.eq(shell.current, "elders")
   if not realKit then T.eq(#rec.sections, 7, "sections rendered on open") end
   local tabs = realKit and nil or rec.tabs
   for i = 1, 7 do
@@ -119,7 +124,7 @@ T.test("panel opens, closes and switches every tab", function()
     if not realKit then T.eq(#rec.sections, 7) end
   end
   SlashCmdList.ELDERS("")
-  T.ok(not w:IsShown())
+  T.ok(not shell:IsShown())
   T.noErrors()
 end)
 
@@ -228,7 +233,7 @@ T.test("sync status: synced reads good, pending stays muted", function()
   MetaKit.UI.Color = function(_, key) asked = asked or key; return 1, 1, 1, 1 end
   local n = 0
   A.PendingCount = function() return n end
-  if not (EldersPanel or UI.Panel()) then SlashCmdList.ELDERS(""); SlashCmdList.ELDERS("") end
+  if not UI.Panel() then SlashCmdList.ELDERS(""); SlashCmdList.ELDERS("") end
   asked = nil
   UI.RefreshPanel()
   T.eq(asked, "good", "everything synced")
@@ -240,7 +245,7 @@ T.test("sync status: synced reads good, pending stays muted", function()
 end)
 
 T.test("header name: auto width when it fits, capped short of the sync text when it doesn't", function()
-  if not (EldersPanel or UI.Panel()) then SlashCmdList.ELDERS(""); SlashCmdList.ELDERS("") end
+  if not UI.Panel() then SlashCmdList.ELDERS(""); SlashCmdList.ELDERS("") end
   local function find(f)
     for _, k in ipairs(f._children or {}) do
       if k._kind == "FontString" and type(k._text) == "string" and k._text:find(", level ") then return k end

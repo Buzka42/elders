@@ -29,6 +29,10 @@ ART_SPLIT = {
                     "seal_unverified", "icon_challenge", "icon_champion", "icon_bloodsports", "banner_victory",
                     "banner_defeat", "ring_"),
 }
+# Shared World of Meta shell art (Shell o.titleArt / o.portraitArt / o.corners): both addons ship it.
+for _shared in ("logo_main", "logo_m", "ornament_corner"):
+    for _name in ART_SPLIT:
+        ART_SPLIT[_name] += (_shared,)
 
 
 def copy_metakit() -> None:

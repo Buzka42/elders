@@ -2,6 +2,7 @@
 local T = dofile(os.getenv("WOW_STUB") or "tests/wow_stub.lua")
 local ns = T.LoadAddon("Elders/Elders.toc")
 local A = ns.A
+C_AddOns.IsAddOnLoaded = function(n) return n == "Elders" end -- the shared shell shows a tab only while its owner is loaded
 
 T.test("no missing files in the TOC", function()
   T.eq(T.missing, nil, "missing: " .. table.concat(T.missing or {}, ", "))
@@ -28,7 +29,7 @@ end)
 
 T.test("panel opens and every tab renders", function()
   SlashCmdList.ELDERS("")
-  T.ok(_G.EldersPanel and EldersPanel:IsShown(), "panel shown")
+  T.ok(MetaKit.UI._sharedShell and MetaKit.UI._sharedShell:IsShown() and ns.UI.Panel(), "panel shown in the shared shell")
   SlashCmdList.ELDERS("")
   T.noErrors()
 end)

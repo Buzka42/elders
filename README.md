@@ -48,6 +48,7 @@ kept on the server, so the addon does not carry them. The addon does not receive
 | `Elders/` | The addon: `Core.lua`, `Collect/`, `Data/`, `UI/`, `Media.lua` (generated), `Elders.toc`. |
 | `Elders/Libs/MetaKit/` | A copy of `MetaKit/`, written by `tools/build.py`. Edit `MetaKit/`, not this copy. |
 | `MetaKit/` | The shared library used by Elders and Bloodsports: addon framework, UI kit, codec, comms and saved data. |
+| `examples/` | Example extension addons for the MetaKit extension API (`docs/ADDON_API.md`). Not installed by `tools/build.py`. |
 | `tests/` | Lua tests, run with Lua 5.1 and a WoW stub (`wow_stub.lua`). |
 | *(server)* | The API runs on Cloudflare Workers and D1 in a separate private repository. Public endpoint: `https://worldofmeta.win/api`. |
 | `uploader/` | Meta Uploader: a Python tool that sends SavedVariables to the API and writes the `WorldOfMeta_Data` addon. See `uploader/README.md`. |

@@ -463,7 +463,11 @@ C_ChatInfo = {
 function T.Deliver(prefix, msg, channel, sender)
   T.Fire("CHAT_MSG_ADDON", prefix, msg, channel, sender, sender, 0, 0, "", 0)
 end
-function SendChatMessage() end
+-- Public chat lines the addon sent: T.chat[i] = { text, chatType, language, target, t }. Cleared by the test that cares.
+T.chat = {}
+function SendChatMessage(text, chatType, language, target)
+  table.insert(T.chat, { text = text, chatType = chatType, language = language, target = target, t = T.clock })
+end
 function JoinChannelByName() end
 function GetChannelName() return 0 end
 ChatFrame_AddMessageEventFilter = function() end
