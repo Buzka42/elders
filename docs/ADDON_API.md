@@ -188,9 +188,9 @@ MK.Ext.Register("narrator", "myext_pirate", {
 ```
 
 `lines(category, ctx) -> { string, ... } | nil`. `category` is a short lowercase string chosen by the host
-(Bloodsports calls: `fight_start`, `first_blood`, `kill`, `flee`, `series_done`, `ring_verdict`; `hit` is not used yet).
+(Bloodsports calls: `fight_start`, `first_blood`, `kill`, `flee`, `series_done`, `ring_verdict`, `ring_dispute`; `hit` is not used yet).
 `ctx` always has `source = "bloodsports"` and, best-effort, `a`/`b` (`fight_start`), `winner`/`loser` (`first_blood`,
-`kill`, `flee`, `series_done`), `dur`, `comeback`, `bo`, `scoreA`/`scoreB`, and `title`/`outcome`/`ref` (`ring_verdict`).
+`kill`, `flee`, `series_done`), `dur`, `comeback`, `bo`, `scoreA`/`scoreB`, and `title`/`outcome`/`ref` (`ring_verdict`), `title`/`kind`/`mid`/`stage` (`disputed`, `upheld` or `amended`)/`by`/`code` (`ring_dispute`).
 The category list may grow: ignore categories you do not know by returning `nil`. Your lines are spoken after the
 host's own line for that event, at the configured narrator level (nothing at level off), never marked important, and
 subject to the shared chat pacing, dedupe and per-duel/series/session caps, so a capped sink drops yours first. Hosts take at most 8 lines

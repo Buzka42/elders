@@ -45,6 +45,8 @@ local function recordingFonts(fn)
       local fs = make(frame, ...)
       fs.SetShadowOffset = function(self, x, y) self._shadow = { x, y } end
       fs.GetShadowOffset = function(self) return unpack(self._shadow or {}) end
+      fs.SetShadowColor = function(self, r, g, b, a) self._shadowColor = { r, g, b, a } end
+      fs.GetShadowColor = function(self) return unpack(self._shadowColor or {}) end
       fs.SetTextColor = function(self, r, g, b, a) self._color = { r, g, b, a } end
       fs.GetTextColor = function(self) return unpack(self._color or {}) end
       -- v7: font size / object are recorded too. Pessimistic: a font object change drops the recorded colour (the
@@ -493,20 +495,24 @@ T.test("Shell v2/v4: tabs are label-driven (min 110), 28 / 24 high, attached to 
   local sw = math.ceil(b.label:GetStringWidth())
   T.ok(b:GetWidth() > 110, "long label grows the tab")
   T.eq(b:GetWidth(), sw + 2 * m.tabPad, "width = label + padding")
-  T.eq(m.tab, 28); T.eq(m.tabInactive, 24)
-  T.eq(a:GetHeight(), 28); T.eq(a.kind, "gold"); T.eq(a.openBottom, true)
+  T.eq(m.tab, 28); T.eq(m.tabInactive, 24); T.eq(m.tabDrop, 5)
+  -- v14: the active tab is m.tab + m.tabDrop high (its top stays where it was; it runs tabDrop px further into the pane)
+  T.eq(a:GetHeight(), 28 + m.tabDrop); T.eq(a.kind, "gold"); T.eq(a.openBottom, true)
   T.eq(b.kind, "dark"); T.eq(b.openBottom, false); T.eq(b:GetHeight(), 24)
-  -- 12 px labels; the active tab's joint (pane colour, m.tabOverlap high) covers the pane border under it
+  T.eq(b._points[1][5], m.tabOverlap + m.tabDrop, "inactive tabs still rest on the pane border")
+  -- 12 px labels; the active tab's joint (overlap + drop high, a fade into the pane colour) runs it into the pane
   T.eq(a.labelSize, 12); T.eq(b.labelSize, 12)
   T.eq(a.joint:IsShown(), true); T.eq(b.joint:IsShown(), false)
-  T.eq(a.joint:GetHeight(), m.tabOverlap)
+  T.eq(a.joint:GetHeight(), m.tabOverlap + m.tabDrop)
   T.eq(a.joint._points[1][1], "BOTTOMLEFT"); T.eq(a.joint._points[1][5], 0)
-  -- the strip hangs off the content pane's top edge, overlapping it
+  -- the strip hangs off the content pane's top edge, overlapping it by overlap + drop; v14: its left edge is the
+  -- section content's left edge (m.contentInset = PANE_PAD 8 + the section's own 8)
   local p = shell.tabStrip._points[1]
-  T.eq(p[1], "BOTTOMLEFT"); T.eq(p[2], shell.content); T.eq(p[3], "TOPLEFT"); T.eq(p[5], -m.tabOverlap)
+  T.eq(p[1], "BOTTOMLEFT"); T.eq(p[2], shell.content); T.eq(p[3], "TOPLEFT")
+  T.eq(p[4], m.contentInset); T.eq(m.contentInset, 16); T.eq(p[5], -(m.tabOverlap + m.tabDrop))
   T.eq(shell.tabStrip:GetHeight(), 28)
   shell:Select("b")
-  T.eq(b.kind, "gold"); T.eq(b:GetHeight(), 28); T.eq(a.kind, "dark"); T.eq(a.openBottom, false)
+  T.eq(b.kind, "gold"); T.eq(b:GetHeight(), 28 + m.tabDrop); T.eq(a.kind, "dark"); T.eq(a.openBottom, false)
   T.eq(a:GetHeight(), 24); T.eq(b.joint:IsShown(), true); T.eq(a.joint:IsShown(), false)
   T.noErrors()
 end)
@@ -701,7 +707,7 @@ T.test("Shell v3: material sidebar (parchment / flat), 26 px nav rows, summary b
     summary = { { "Record", "41-17" }, { "Streak", "W5", "good" }, "Plain line", { label = "Best", value = 9, color = "gold" } } })
   T.eq(s.sidebarMaterial, "parchment"); T.eq(s.navRows, true)
   T.eq(s.sidebarTexture:GetTexture(), UI.ShellTextures.achParchment)
-  T.eq(s.footerHeight, 26); T.eq(s.footer:GetHeight(), 26)
+  T.eq(s.footerHeight, 24, "v14: 24 px footer plate"); T.eq(s.footer:GetHeight(), 24)
   s:AddTab({ id = "bs", label = "Bloodsports" })
   for i, id in ipairs({ "a", "b", "c" }) do
     s:AddSection({ tab = "bs", id = id, label = id:upper(), order = i, icon = "Interface\\Icons\\X",
@@ -720,15 +726,19 @@ T.test("Shell v3: material sidebar (parchment / flat), 26 px nav rows, summary b
   T.eq(s.currentSection, "b"); T.eq(r2.kind, "gold"); T.eq(r1.kind, "dark")
   -- pressed nudge on a nav row
   r2._scripts.OnMouseDown(r2)
-  local lp = r2.label._points[1]; T.eq(lp[4], 8 + 16 + 8 + 1); T.eq(lp[5], -1)
+  local lp = r2.label._points[1]; T.eq(lp[4], 8 + m.navIcon + 8 + 1); T.eq(lp[5], -1)
   r2._scripts.OnMouseUp(r2)
-  lp = r2.label._points[1]; T.eq(lp[4], 8 + 16 + 8); T.eq(lp[5], 0)
-  -- summary: 4 lines anchored to the sidebar bottom, 8 px above the footer rule (8 pad + 26 plate + 8 + 1 rule + 8)
+  lp = r2.label._points[1]; T.eq(lp[4], 8 + m.navIcon + 8); T.eq(lp[5], 0)
+  -- v14 summary: 4 lines hanging from the TOP, the rule m.summaryTopGap (14) under the last nav row
   local sm = tab.summaryUI
   T.eq(tab.summaryShown, 4)
-  local bo = 8 + 26 + 8 + 1 + 8
+  local bo = 8 + 24 + 8 + 1 + 8
   T.eq(s:SummaryBottomOffset(), bo)
-  T.eq(sm.rule._points[1][1], "BOTTOMLEFT"); T.eq(sm.rule._points[1][5], bo + 4 * 16 + 8)
+  local ruleTop = 32 + 3 * 26 + 14
+  T.eq(sm.rule._points[1][1], "TOPLEFT"); T.eq(sm.rule._points[1][5], -ruleTop)
+  T.eq(sm.rows[1].label._points[1][1], "TOPLEFT"); T.eq(sm.rows[1].label._points[1][5], -(ruleTop + 9))
+  T.eq(sm.rows[2].label._points[1][5], -(ruleTop + 9 + 16))
+  T.eq(tab.summaryTop, ruleTop); T.eq(tab.summaryBottom, ruleTop + 9 + 4 * 16)
   T.eq(sm.rows[1].label:GetText(), "Record"); T.eq(sm.rows[1].value:GetText(), "41-17")
   T.eq(sm.rows[3].label:GetText(), "Plain line"); T.eq(sm.rows[3].value:IsShown(), false)
   T.eq(sm.rows[4].value:GetText(), "9")
@@ -742,13 +752,14 @@ T.test("Shell v3: material sidebar (parchment / flat), 26 px nav rows, summary b
   s:Select("el")
   T.ok(tostring(s.lastError):find("summary down"), "lastError kept")
   T.eq(s.tabById.el.summaryShown, 0)
-  -- a real sidebar height: lines that would run into the footer are hidden
-  s.sidebar:SetHeight(32 + 3 * 26 + 12 + 9 + 16 * 2 + 8 + 26 + 8 + 1 + 8)
+  -- a real sidebar height: lines that would run into the footer band are hidden, from the BOTTOM (v14)
+  s.sidebar:SetHeight(32 + 3 * 26 + 14 + 9 + 16 * 2 + 8 + 24 + 8 + 1 + 8)
   s:Select("bs")
   T.eq(tab.summaryShown, 2, "only the lines that fit")
-  T.eq(tab.summaryFirst, 3, "dropped from the top of the block")
-  T.eq(sm.rows[1].label:IsShown(), false); T.eq(sm.rows[3].label:IsShown(), true)
+  T.eq(tab.summaryFirst, 1, "v14: the block keeps its top lines")
+  T.eq(sm.rows[1].label:IsShown(), true); T.eq(sm.rows[3].label:IsShown(), false)
   T.ok(tab.summaryTop >= 32 + 3 * 26 + 12, "never over the sections")
+  T.ok(tab.summaryBottom <= s.sidebar:GetHeight() - bo, "never into the footer band")
   T.noErrors()
 end)
 
@@ -868,7 +879,7 @@ T.test("/mkchrome v3: best chrome, parchment + summary, money normalised, honest
   T.eq(shell.chromeKind, "portrait", "v5: the demo defaults to portrait even with the dialog border")
   T.eq(UI.ChromeDemoBestChrome(), "dialog", "stub has the dialog border")
   T.eq(shell.sidebarMaterial, "parchment")
-  T.eq(shell.footer.kind, "dark", "v7: the demo footer is a dark plate (footerVariant = \"dark\")")
+  T.eq(shell.footer.kind, "gold", "v14: the demo Sync now is the gold plate (footerKind = \"gold\"), as the shared shell")
   shell:Select("bloodsports", "ring")
   local sm = shell.tabById.bloodsports.summaryUI
   T.eq(shell.tabById.bloodsports.summaryShown, #UI.ChromeDemoSummary.bloodsports)
@@ -940,8 +951,8 @@ end
 
 T.test("Shell v4: parchment sidebar text is dark ink; flat keeps light text", function()
   local ink = UI.SiteTokens.sidebarInk
-  sameColor(ink.label, hexc("21150d"), "label"); sameColor(ink.labelSoft, hexc("3a2810"), "labelSoft")
-  sameColor(ink.summaryLabel, hexc("21150d"), "summaryLabel (v7)"); sameColor(ink.value, hexc("21150d"), "value")
+  sameColor(ink.label, hexc("1a1006"), "label"); sameColor(ink.labelSoft, hexc("1a1006"), "labelSoft (v14)")
+  sameColor(ink.summaryLabel, hexc("1a1006"), "summaryLabel (v14)"); sameColor(ink.value, hexc("1a1006"), "value")
   sameColor(ink.good, hexc("14550c"), "good (v6)"); sameColor(ink.bad, hexc("8c1d10"), "bad")
   for key, c in pairs(ink) do
     if key ~= "rule" then T.eq(c[4], 1, key .. " full alpha") end
@@ -989,7 +1000,7 @@ T.test("Shell v4: parchment sidebar text is dark ink; flat keeps light text", fu
   T.noErrors()
 end)
 
-T.test("Shell v4: summary anchors to the sidebar bottom and drops lines from the top", function()
+T.test("Shell v14: summary hangs 14 px under the nav rows and drops lines from the bottom", function()
   local m = UI.ShellMetrics
   local lines = { { "Record", "41-17" }, { "Win rate", "70.7%" }, { "Streak", "W5" }, { "Best streak", "9" }, { "Net", "+1g" } }
   local s = UI.Shell({ name = "TestShellV4Bottom", sidebar = "parchment", footerText = "Sync now", summary = lines })
@@ -1001,31 +1012,30 @@ T.test("Shell v4: summary anchors to the sidebar bottom and drops lines from the
   s:Toggle("t")
   local tab, sm = s.tabById.t, s.tabById.t.summaryUI
   local bo = s:SummaryBottomOffset()
-  T.eq(bo, 8 + 26 + 8 + 1 + m.summaryGap, "8 px above the footer rule")
+  T.eq(bo, 8 + 24 + 8 + 1 + m.summaryGap, "8 px above the footer rule")
   T.eq(tab.summaryShown, 5, "all 5 fit at 500 px")
-  -- the last line sits on the block bottom, each line above it one summaryLine higher; rule 8 px over the first
-  local last = sm.rows[5].label._points[1]
-  T.eq(last[1], "BOTTOMLEFT"); T.eq(last[5], bo)
-  T.eq(sm.rows[1].label._points[1][5], bo + 4 * m.summaryLine)
-  T.eq(sm.rule._points[1][5], bo + 5 * m.summaryLine + 8)
-  T.eq(sm.rule:IsShown(), true)
+  -- the rule sits summaryTopGap under the last row; line i one summaryLine under line i-1, the first 9 px under it
   local sectionsEnd = 32 + 5 * 26
-  T.eq(tab.summaryTop, 500 - (bo + 5 * 16 + 8) - 1)
-  T.ok(tab.summaryTop > sectionsEnd + 12, "void sits between sections and summary, not under it")
-  -- shrink: lines drop from the TOP, the bottom line stays put, never over the sections
-  local h = sectionsEnd + 12 + 9 + 2 * 16 + bo + 3
+  T.eq(m.summaryTopGap, 14)
+  T.eq(sm.rule._points[1][1], "TOPLEFT"); T.eq(sm.rule._points[1][5], -(sectionsEnd + 14))
+  T.eq(sm.rows[1].label._points[1][5], -(sectionsEnd + 14 + 9))
+  T.eq(sm.rows[5].label._points[1][5], -(sectionsEnd + 14 + 9 + 4 * m.summaryLine))
+  T.eq(sm.rule:IsShown(), true)
+  T.eq(tab.summaryTop, sectionsEnd + 14, "no dead zone between the nav and the stats")
+  -- shrink: lines drop from the BOTTOM, the top stays put, never into the footer band
+  local h = sectionsEnd + 14 + 9 + 2 * 16 + bo + 3
   s.sidebar:SetHeight(h)
   s:Refresh()
-  T.eq(tab.summaryShown, 2); T.eq(tab.summaryFirst, 4)
-  T.eq(sm.rows[1].label:IsShown(), false); T.eq(sm.rows[3].label:IsShown(), false)
-  T.eq(sm.rows[4].label:IsShown(), true); T.eq(sm.rows[5].label:IsShown(), true)
-  T.eq(sm.rows[5].label._points[1][5], bo, "bottom line unmoved")
-  T.ok(tab.summaryTop >= sectionsEnd + 12, "no overlap with the sections")
+  T.eq(tab.summaryShown, 2); T.eq(tab.summaryFirst, 1)
+  T.eq(sm.rows[1].label:IsShown(), true); T.eq(sm.rows[2].label:IsShown(), true)
+  T.eq(sm.rows[3].label:IsShown(), false); T.eq(sm.rows[5].label:IsShown(), false)
+  T.eq(sm.rows[1].label._points[1][5], -(sectionsEnd + 14 + 9), "top line unmoved")
+  T.ok(tab.summaryBottom <= h - bo, "no overlap with the footer band")
   -- no room at all: block hidden, rule too
   s.sidebar:SetHeight(sectionsEnd + bo + 10)
   s:Refresh()
   T.eq(tab.summaryShown, 0); T.eq(sm.rule:IsShown(), false)
-  -- no footer: the block sits SIDE_PAD (8) above the sidebar edge
+  -- no footer: the band is SIDE_PAD (8) above the sidebar edge
   local nf = UI.Shell({ name = "TestShellV4NoFoot", sidebar = "parchment", summary = lines })
   T.eq(nf:SummaryBottomOffset(), 8)
   -- the chrome demo keeps 5 bloodsports summary lines
@@ -1152,8 +1162,9 @@ end)
 -- must be the fixed ink, never the plate default (light gold) nor the it4 labelSoft (4a3418, which the it4 crop showed
 -- blending to light taupe). The stub records every SetTextColor; the last call wins, as in the client.
 T.test("Shell v5: final sidebar label colours after Select + hover-out on parchment are the fixed ink", function()
-  local want = { unselected = hexc("3a2810"), selected = hexc("0e0904"), summaryLabel = hexc("21150d"), -- v7
-    value = hexc("21150d"), good = hexc("14550c"), bad = hexc("8c1d10"), heading = hexc("6e130c") }
+  -- v14: one recorded-final ink #1a1006 on every nav / summary path (selected included); heading ink-red #5a120c
+  local want = { unselected = hexc("1a1006"), selected = hexc("1a1006"), summaryLabel = hexc("1a1006"),
+    value = hexc("1a1006"), good = hexc("14550c"), bad = hexc("8c1d10"), heading = hexc("5a120c") }
   local s
   recordingFonts(function()
     s = UI.Shell({ name = "TestShellV5Ink", sidebar = "parchment", chrome = "portrait", footerText = "Sync now",
@@ -1192,14 +1203,13 @@ T.test("Shell v5: final sidebar label colours after Select + hover-out on parchm
   sameColor({ sm.rows[1].value:GetTextColor() }, want.value, "summary value")
   sameColor({ sm.rows[2].value:GetTextColor() }, want.good, "summary good")
   sameColor({ sm.rows[3].value:GetTextColor() }, want.bad, "summary bad")
-  sameColor({ tab.heading:GetTextColor() }, want.heading, "heading ink-red")
-  -- the parchment is lighter than it4 (0.82) so the ink has a ground to read on; v9 settles it at 0.87 (it8: 0.92
-  -- read brighter than the main pane)
+  sameColor({ tab.heading:GetTextColor() }, want.heading, "heading: v14 ink-red #5a120c")
+  -- v14: the parchment tint is 1.0 (the client's vertex colour ceiling) plus the cream lift
   T.ok(UI.SiteTokens.parchTint[1] > 0.82, "parchment tint lifted over it4")
   T.noErrors()
 end)
 
-T.test("Shell v5: sidebarExtra fills the gap between sections and the bottom summary", function()
+T.test("Shell v14: sidebarExtra fills the space between the summary (under the nav) and the footer band", function()
   local lines = { { "Record", "41-17" }, { "Win rate", "70.7%" }, { "Streak", "W5" } }
   local calls, got = 0, {}
   local s = UI.Shell({ name = "TestShellV5Extra", sidebar = "parchment", footerText = "Sync now", summary = lines,
@@ -1221,18 +1231,20 @@ T.test("Shell v5: sidebarExtra fills the gap between sections and the bottom sum
   local tab = s.tabById.t
   T.eq(calls, 1, "built once per tab"); T.eq(got.shell, s); T.eq(got.tab, "t"); T.eq(got.parent, tab.extraHost)
   local host = tab.extraHost
-  local top = 32 + 5 * 26 + 12
-  T.eq(host._points[1][1], "TOPLEFT"); T.eq(host._points[1][5], -top, "12 px under the last row")
+  local ruleTop = 32 + 5 * 26 + 14
+  T.eq(tab.summaryTop, ruleTop, "summary hangs under the nav")
+  local top = ruleTop + 9 + 3 * 16 + 8
+  T.eq(tab.summaryBottom + 8, top)
+  T.eq(host._points[1][1], "TOPLEFT"); T.eq(host._points[1][5], -top, "8 px under the summary block")
   T.eq(host._points[2][1], "BOTTOMRIGHT")
-  T.eq(host._points[2][5], tab.summaryRuleY + 1 + 8, "8 px over the summary rule")
-  T.eq(tab.summaryRuleY, s:SummaryBottomOffset() + 3 * 16 + 8)
+  T.eq(host._points[2][5], s:SummaryBottomOffset(), "down to the footer band")
   T.eq(host:IsShown(), true)
-  T.eq(tab.extraAvail, 500 - top - (tab.summaryRuleY + 9))
+  T.eq(tab.extraAvail, 500 - top - s:SummaryBottomOffset())
   T.eq(tab.extraFrame._filled, host, "an unanchored frame fills the host")
-  -- summary unmoved: still bottom-anchored
-  T.eq(tab.summaryUI.rows[3].label._points[1][5], s:SummaryBottomOffset())
+  -- summary unmoved: still under the nav
+  T.eq(tab.summaryUI.rows[3].label._points[1][5], -(ruleTop + 9 + 2 * 16))
   -- too short for frame.minHeight: hidden, never over the summary
-  s.sidebar:SetHeight(top + tab.summaryRuleY + 9 + 59)
+  s.sidebar:SetHeight(top + s:SummaryBottomOffset() + 59)
   s:Refresh()
   T.eq(host:IsShown(), false)
   -- per-tab override wins; an erroring builder is kept, the shell still works
@@ -1295,7 +1307,7 @@ end)
 -- v6 ----------------------------------------------------------------------------------------------------------------
 
 T.test("Shell v6: parchment summary records final dark ink (labels, values, good, bad, money)", function()
-  local want = { label = hexc("21150d"), value = hexc("21150d"), good = hexc("14550c"), bad = hexc("8c1d10") } -- v7 label
+  local want = { label = hexc("1a1006"), value = hexc("1a1006"), good = hexc("14550c"), bad = hexc("8c1d10") } -- v14 ink
   local s
   recordingFonts(function()
     s = UI.Shell({ name = "TestShellV6SummaryInk", sidebar = "parchment", chrome = "portrait", footerText = "Sync now",
@@ -1403,11 +1415,13 @@ T.test("StatRows v6: o.rowHeight option (default unchanged); demo stat pages 28 
   T.noErrors()
 end)
 
-T.test("Shell v6: nav selection strip + darker wash on parchment, on BOTH tabs' sidebars", function()
+T.test("Shell v14: selected nav row = cream wash + 1 px dark-gold rules + dark-red strip, on BOTH tabs' sidebars", function()
   local shell = UI.ChromeDemo()
   local ink = shell.ink
-  sameColor(ink.strip, hexc("6a4708"), "strip ink")
-  T.near(UI.SiteTokens.parchSelWash[4], 0.22, 1e-6)
+  sameColor(ink.strip, hexc("5a120c"), "strip ink: dark red")
+  sameColor(ink.selEdge, hexc("6a4708"), "selection rules: dark gold")
+  local wash = UI.SiteTokens.parchSelWash
+  T.near(wash[1], 1, 1e-6); T.near(wash[2], 240 / 255, 1e-6); T.near(wash[3], 200 / 255, 1e-6); T.near(wash[4], 0.35, 1e-6)
   for _, case in ipairs({ { "bloodsports", "clubs" }, { "elders", "pace" }, { "elders", "overview" } }) do
     local tabId, secId = case[1], case[2]
     shell:Select(tabId, secId)
@@ -1418,19 +1432,24 @@ T.test("Shell v6: nav selection strip + darker wash on parchment, on BOTH tabs' 
       local sel = row.sectionId == secId
       T.eq(row.strip:IsShown(), sel, tabId .. "/" .. row.sectionId .. " strip")
       T.eq(row.wash:IsShown(), sel, tabId .. "/" .. row.sectionId .. " wash")
+      T.eq(row.selTop:IsShown(), sel, tabId .. "/" .. row.sectionId .. " top rule")
+      T.eq(row.selBottom:IsShown(), sel, tabId .. "/" .. row.sectionId .. " bottom rule")
       if sel then
         selected = selected + 1
         T.eq(row.strip:GetWidth(), UI.ShellMetrics.navStrip)
         T.eq(row.stripColor, ink.strip, tabId .. " strip is the parchment strip colour")
-        T.near(row.washColor[4], 0.22, 1e-6, tabId .. " darker wash")
-        for i = 1, 3 do T.near(row.washColor[i], 0, 1e-6) end
+        T.eq(row.washColor, wash, tabId .. " cream wash")
+        local wc = row.washColor
+        T.ok(0.2126 * wc[1] + 0.7152 * wc[2] + 0.0722 * wc[3] > 0.8,
+          tabId .. " the wash is LIGHTER than the ground: selection raises contrast")
+        T.eq(row.selEdgeColor, ink.selEdge); T.eq(row.selTop:GetHeight(), 1); T.eq(row.selBottom:GetHeight(), 1)
       end
     end
     T.eq(selected, 1, tabId .. " exactly one selected row")
   end
-  -- flat sidebars keep the bright gold strip and gold wash
+  -- flat sidebars keep the bright gold strip and gold wash, no rules
   local fr = UI.ShellNavRow(UIParent, nil)
-  T.eq(fr.stripColor, UI.SiteTokens.gold); T.near(fr.washColor[4], 0.12, 1e-6)
+  T.eq(fr.stripColor, UI.SiteTokens.gold); T.near(fr.washColor[4], 0.12, 1e-6); T.eq(fr.selTop, nil)
   T.noErrors()
 end)
 
@@ -1440,8 +1459,8 @@ local function lum(c) return 0.2126 * c[1] + 0.7152 * c[2] + 0.0722 * c[3] end
 
 -- it6: summary labels photographed lighter than the green values. The recorder keeps the LAST colour per font string
 -- (a font-object change after it would wipe it), read after build + Select + hover + Refresh.
-T.test("Shell v7: summary labels record final #21150d at 12 px after build + refresh (own parchment palette)", function()
-  local want = { label = hexc("21150d"), value = hexc("21150d"), good = hexc("14550c"), bad = hexc("8c1d10") }
+T.test("Shell v7/v14: summary labels record final #1a1006 at 12 px after build + refresh (own parchment palette)", function()
+  local want = { label = hexc("1a1006"), value = hexc("1a1006"), good = hexc("14550c"), bad = hexc("8c1d10") }
   local s
   recordingFonts(function()
     s = UI.Shell({ name = "TestShellV7Summary", sidebar = "parchment", chrome = "portrait", footerText = "Sync now",
@@ -1563,8 +1582,15 @@ T.test("Shell v7: footerVariant = dark is a dark plate with a gold label; footer
   T.eq(UI.Shell({ name = "TestShellV7FootGold", footerText = "x", footerKind = "gold" }).footer.kind, "gold", "gold callers")
   local d = UI.Shell({ name = "TestShellV7FootDefault", footerText = "x" })
   T.eq(d.footer.kind, "dark", "default unchanged"); T.eq(d.footer.labelColor, nil, "default label colour unchanged")
-  T.eq(UI.ChromeDemo().footer.kind, "dark", "demo Sync now is dark")
-  T.eq(UI.ChromeDemo().footerVariant, "dark")
+  -- v14: the demo and the shared shell use the gold plate (TF recipe: top 1,.86,.42 -> bottom .74,.55,.08, ink
+  -- .13,.09,.01) at 24 px
+  local demo = UI.ChromeDemo()
+  T.eq(demo.footer.kind, "gold", "demo Sync now is the gold plate"); T.eq(demo.footerVariant, "gold")
+  T.eq(demo.footer:GetHeight(), 24)
+  local k = UI.SiteTokens
+  T.near(k.plateGoldTop[1], 1, 1e-6); T.near(k.plateGoldTop[2], 0.86, 1e-6); T.near(k.plateGoldTop[3], 0.42, 1e-6)
+  T.near(k.plateGoldBottom[1], 0.74, 1e-6); T.near(k.plateGoldBottom[2], 0.55, 1e-6); T.near(k.plateGoldBottom[3], 0.08, 1e-6)
+  T.near(k.plateGoldLabel[1], 0.13, 1e-6); T.near(k.plateGoldLabel[2], 0.09, 1e-6); T.near(k.plateGoldLabel[3], 0.01, 1e-6)
   T.noErrors()
 end)
 
@@ -1682,12 +1708,15 @@ T.test("Shell v8: portraitArt fills the native portrait socket; falls back to o.
     local s = UI.Shell({ name = "TestShellV8Portrait", title = "x", ns = ART_NS, portraitArt = true,
       portrait = "Interface\\Icons\\X" })
     T.ok(s.hasPortrait, "socket found")
-    T.eq(s.portrait:GetTexture(), base .. "logo_m"); T.eq(s.portraitArt, base .. "logo_m")
-    sameList(s.portrait._texCoord, { 0, 1, 0, 1 }, "full texture in the socket")
+    -- v13: the art sits on its own fitted texture (shell.medallion); the socket texture is the dark backing
+    T.eq(s.portraitArt, base .. "logo_m"); T.ok(s.medallion, "medallion fitted")
+    T.eq(s.medallion.texture:GetTexture(), base .. "logo_m"); T.eq(s.portrait:GetTexture(), "Interface\\Buttons\\WHITE8X8")
+    sameList(s.medallion.texture._texCoord, { 0, 1, 0, 1 }, "full texture in the medallion")
     local p = UI.Shell({ name = "TestShellV8PortraitPath", title = "x", portraitArt = "Interface\\Custom\\M" })
-    T.eq(p.portrait:GetTexture(), "Interface\\Custom\\M")
+    T.eq(p.medallion.texture:GetTexture(), "Interface\\Custom\\M")
     local n = UI.Shell({ name = "TestShellV8PortraitNone", title = "x", portraitArt = true, portrait = "Interface\\Icons\\X" })
     T.eq(n.portrait:GetTexture(), "Interface\\Icons\\X", "no art -> o.portrait"); T.eq(n.portraitArt, nil)
+    T.eq(n.medallion, nil)
   end)
   artStubs({ ["Interface\\AddOns\\Elders\\Media\\logo_m"] = true }, function()
     local b = UI.Shell({ name = "TestShellV8PortraitBad", title = "x", ns = ART_NS, portraitArt = true,
@@ -1736,7 +1765,8 @@ end)
 
 T.test("/mkchrome v8: the demo asks for title art, the M portrait and corners (off without Media in the stub)", function()
   local shell = UI.ChromeDemo()
-  T.eq(shell.opts.titleArt, true); T.eq(shell.opts.portraitArt, true); T.eq(shell.opts.corners, "bottom", "v9")
+  T.eq(shell.opts.titleArt, true); T.eq(shell.opts.portraitArt, true)
+  T.eq(shell.opts.corners, nil, "v14: corner ornaments removed (the bottom pair read as a clipping accident)")
   -- the stub loads Demo.lua with no addon ns, so every piece falls back to the v7 look
   T.eq(shell.titleArt, nil); T.eq(shell.corners, nil); T.eq(shell.title:IsShown(), true)
   T.noErrors()
@@ -1864,12 +1894,61 @@ T.test("Shell v9: closeStyle = 'plate' swaps the stock close for a gold-X plate;
   T.noErrors()
 end)
 
-T.test("Theme v9: parchment tint 0.87; /mkchrome v9: 960 x 640, plate close, bottom corners asked", function()
-  for i = 1, 3 do T.near(UI.SiteTokens.parchTint[i], 0.87, 1e-9, "parchTint " .. i) end
+T.test("Theme v14: parchment tint 1.0 + cream lift lands on ~(205,175,120); recorded on the sidebar", function()
+  local k = UI.SiteTokens
+  for i = 1, 3 do T.near(k.parchTint[i], 1, 1e-9, "parchTint " .. i .. " at the client's vertex-colour ceiling") end
+  local lift = k.parchLift
+  T.near(lift[1], 1, 1e-9); T.near(lift[2], 240 / 255, 1e-9); T.near(lift[3], 200 / 255, 1e-9); T.near(lift[4], 0.36, 1e-9)
+  -- predicted ground: the it12 sample at the 0.87 tint, re-tinted to 1.0, then the cream blended over it
+  local want = { 205, 175, 120 }
+  for i = 1, 3 do
+    local base = k.parchSample[i] / 0.87 * k.parchTint[i]
+    local got = base * (1 - lift[4]) + lift[i] * 255 * lift[4]
+    T.ok(math.abs(got - want[i]) <= 8, string.format("channel %d predicted %.1f vs judge target %d", i, got, want[i]))
+  end
+  -- the shell records both on the sidebar: tint on the parchment texture, the lift as its own texture above it
+  local s = UI.Shell({ name = "TestShellV14Parch", sidebar = "parchment" })
+  T.eq(s.sidebarTint, k.parchTint); T.ok(s.sidebarLift, "lift texture drawn")
+  T.eq(s.sidebarLiftColor, k.parchLift)
+  T.ok(s.sidebarLift:GetParent() == s.sidebar, "lift on the sidebar, under its row / text frames")
+  T.eq(UI.Shell({ name = "TestShellV14Flat", sidebar = "flat" }).sidebarLift, nil, "flat sidebar: no lift")
   local shell = UI.ChromeDemo()
   T.eq(shell.frame:GetWidth(), 960); T.eq(shell.frame:GetHeight(), 640)
-  T.eq(shell.opts.closeStyle, "plate"); T.eq(shell.closeStyle, "plate", "the plate constructs in the stub")
-  T.eq(shell.opts.corners, "bottom")
+  T.eq(shell.opts.closeStyle, nil, "v14: native close"); T.eq(shell.closeStyle, "native")
+  T.eq(shell.opts.corners, nil)
+  T.noErrors()
+end)
+
+T.test("Shell v14: close chain = template CloseButton -> UIPanelCloseButton -> gold-X plate -> text plate", function()
+  -- portrait chrome in the stub: the template has no CloseButton table, so UIPanelCloseButton takes
+  local s = UI.Shell({ name = "TestShellV14Close", title = "x", chrome = "portrait" })
+  T.eq(s.closeKind, "panel"); T.eq(s.closeButton._template, "UIPanelCloseButton"); T.eq(s.closeStyle, "native")
+  s.frame:Show(); s.closeButton:Click(); T.eq(s.frame:IsShown(), false, "closes the window")
+  -- a template that brings its own CloseButton wins
+  local prev = CreateFrame
+  CreateFrame = function(kind, name, parent, template)
+    local f = prev(kind, name, parent, template)
+    if template == "PortraitFrameTemplate" then f.CloseButton = prev("Button", nil, f) end
+    return f
+  end
+  local ok, err = pcall(function()
+    local t = UI.Shell({ name = "TestShellV14CloseTpl", title = "x" })
+    T.eq(t.closeKind, "template"); T.eq(t.closeButton, t.frame.CloseButton)
+  end)
+  CreateFrame = prev
+  if not ok then error(err, 0) end
+  -- no UIPanelCloseButton: the gold-X plate (was a bare "X" plate)
+  CreateFrame = function(kind, name, parent, template)
+    if template == "UIPanelCloseButton" then error("no template") end
+    return prev(kind, name, parent, template)
+  end
+  ok, err = pcall(function()
+    local p = UI.Shell({ name = "TestShellV14ClosePlate", title = "x" })
+    T.eq(p.closeKind, "plate"); T.eq(p.closeButton.mkGlyph, "strokes")
+    p.frame:Show(); p.closeButton:Click(); T.eq(p.frame:IsShown(), false)
+  end)
+  CreateFrame = prev
+  if not ok then error(err, 0) end
   T.noErrors()
 end)
 
@@ -1995,10 +2074,9 @@ T.test("Shell v10: titleTuck 6; flankArt crests resolve, sit centred in the titl
     local b = UI.Shell({ name = "TestShellV10FlankBad", title = "x", ns = FLANK_NS, flankArt = { left = true, right = true } })
     T.eq(b.flanks.left, nil, "erroring art -> left hidden"); T.eq(b.flanks.right.token, "crest_tournament")
   end)
-  -- the demo asks for both crests (crest_elders first on the right, crest_tournament as the fallback)
+  -- v13: the owner dropped the crests -- the option stays (dormant), the demo no longer asks for it
   local demo = UI.ChromeDemo()
-  T.eq(demo.opts.flankArt.left, "crest_bloodsports")
-  T.eq(demo.opts.flankArt.right[1], "crest_elders"); T.eq(demo.opts.flankArt.right[2], "crest_tournament")
+  T.eq(demo.opts.flankArt, nil, "demo: no crest flanks"); T.eq(demo.flanks, nil)
   T.noErrors()
 end)
 
@@ -2103,7 +2181,11 @@ T.test("SharedShell: singleton, queued tabs / sections drain on creation, ns art
     T.eq(UI._sharedShell, shell); T.eq(shell.db, db1, "first caller's db wins")
     T.eq(shell.name, "WorldOfMetaShell"); T.eq(_G.WorldOfMetaShell, shell.frame)
     T.eq(shell.chromeKind, "portrait"); T.eq(shell.sidebarMaterial == "parchment" or shell.sidebarMaterial == "flat", true)
-    T.eq(shell.footerVariant, "dark"); T.ok(shell.titleArt, "wordmark from the registered ns")
+    T.eq(shell.footerVariant, "gold", "v14: gold Sync plate"); T.eq(shell.footerHeight, 24)
+    T.ok(shell.titleArt, "wordmark from the registered ns")
+    T.eq(shell.opts.corners, nil, "v14: no corner ornaments"); T.eq(shell.corners, nil)
+    T.eq(shell.closeStyle, "native", "v14: native close chain"); T.eq(shell.opts.closeStyle, nil)
+    T.eq(shell.opts.flankArt, nil, "v13: no crest flanks in the shared shell"); T.eq(shell.flanks, nil)
     T.eq(#shell.tabs, 1); T.eq(#shell.sections.alpha, 2)
     -- after creation registrations apply directly
     UI.RegisterSharedTab({ id = "beta", label = "Beta", owner = "Beta", order = 2 })
@@ -2127,6 +2209,309 @@ T.test("SharedShell: singleton, queued tabs / sections drain on creation, ns art
   end)
   restoreLoaded()
   if not ok then error(err, 0) end
+end)
+
+-- v13 (owner it11 defects): medallion fit, sidebar heading, per-tab wordmarks.
+-- Inside artStubs: the template portrait reports `socket` px (0 = unmeasured) and a draw layer, textures record their
+-- layer / masks, mask textures record SetAllPoints. `noMask` makes CreateMaskTexture raise (an old client).
+local function medallionStubs(socket, noMask, fn)
+  artStubs(nil, function()
+    local inner = CreateFrame
+    CreateFrame = function(kind, name, parent, template)
+      local f = inner(kind, name, parent, template)
+      local make = f.CreateTexture
+      f.CreateTexture = function(frame, n, layer, tpl, sub)
+        local t = make(frame, n, layer, tpl, sub)
+        t._layer = { layer, sub }
+        t.AddMaskTexture = function(self, m) self._masks = self._masks or {}; table.insert(self._masks, m) end
+        return t
+      end
+      local makeMask = f.CreateMaskTexture
+      f.CreateMaskTexture = function(frame, ...)
+        if noMask then error("CreateMaskTexture: not on this client") end
+        local m = makeMask(frame, ...)
+        m.SetAllPoints = function(self, rel) self._allPoints = rel end
+        return m
+      end
+      if template == "PortraitFrameTemplate" then
+        local p = f:CreateTexture(nil, "OVERLAY", nil, -1)
+        p:SetSize(socket, socket)
+        p.GetDrawLayer = function() return "OVERLAY", -1 end
+        f.GetPortrait = function() return p end
+      end
+      return f
+    end
+    local ok, err = pcall(fn)
+    CreateFrame = inner
+    if not ok then error(err, 0) end
+  end)
+end
+
+T.test("Shell v13-v17: portraitArt medallion = 58% of the MEASURED socket, lifted, masked by one 86% disc", function()
+  local A, base = UI.ShellArt, ART_NS.Media.path
+  T.eq(A.medallionScale, 0.58, "v17 (judge5): 63% still crowded the rim (v16: 76% cut the M's legs)")
+  T.eq(A.medallionDisc, 0.86); T.eq(A.medallionLift, 0.015)
+  T.ok(A.medallionScale < A.medallionDisc * 0.70, "art < 70% of the disc: a dark margin ring on every side")
+  T.eq(A.portraitMask, "Interface\\CharacterFrame\\TempPortraitAlphaMask")
+  medallionStubs(62, false, function()
+    local s = UI.Shell({ name = "TestShellV13Medal", title = "x", chrome = "portrait", ns = ART_NS, portraitArt = true,
+      portrait = "Interface\\Icons\\X" })
+    local med, p = s.medallion, s.portrait
+    T.ok(med, "medallion fitted")
+    T.eq(med.socket, 62); T.eq(med.measured, true, "size from the socket's own GetWidth, not a constant")
+    T.eq(med.size, math.floor(62 * 0.58 + 0.5)); T.eq(med.size, 36)
+    T.eq(med.disc, math.floor(62 * 0.86 + 0.5)); T.eq(med.disc, 53)
+    T.ok(med.size < med.disc * 0.70, "art " .. med.size .. " < 70% of disc " .. med.disc)
+    T.ok((med.disc - med.size) / 2 >= 0.1 * med.disc, "~10%+ of the disc diameter dark margin left / right")
+    T.ok((med.disc - med.size) / 2 >= 0.1 * med.socket, "v17: ~10%+ of the socket dark margin on every side")
+    T.eq(med.lift, 1, "nudged up 1.5% of the socket")
+    local t = med.texture
+    T.ok(t ~= p, "own texture, not the template's")
+    T.eq(t:GetTexture(), base .. "logo_m"); T.eq(t:GetWidth(), 36); T.eq(t:GetHeight(), 36)
+    T.eq(t:GetNumPoints(), 1)
+    local pt, rel, rp, x, y = t:GetPoint(1)
+    T.eq(pt, "CENTER"); T.eq(rel, p); T.eq(rp, "CENTER"); T.eq(x, 0); T.eq(y, 1)
+    T.eq(t._layer[1], "OVERLAY"); T.eq(t._layer[2], 0, "one sublevel over the socket texture")
+    -- explicit masks: the medallion and the dark backing are both cut by the disc circle centred on the SOCKET
+    -- (never the art's own inscribed circle, which clipped the M's legs)
+    for _, m in ipairs({ med.mask, med.backingMask }) do
+      T.eq(m:GetTexture(), A.portraitMask); T.eq(m._allPoints, nil)
+      T.eq(m:GetWidth(), 53); T.eq(m:GetHeight(), 53)
+      local mpt, mrel, mrp, mx, my = m:GetPoint(1)
+      T.eq(mpt, "CENTER"); T.eq(mrel, p); T.eq(mrp, "CENTER"); T.eq(mx, 0); T.eq(my, 0)
+    end
+    T.eq(#(t._masks or {}), 1); T.eq(t._masks[1], med.mask)
+    T.eq(#(p._masks or {}), 1); T.eq(p._masks[1], med.backingMask)
+    T.eq(p:GetTexture(), "Interface\\Buttons\\WHITE8X8", "socket is the dark backing")
+    T.ok(med.size < med.socket, "inside the ring")
+  end)
+  -- a socket that reports no size yet (its parent here is the 960 px window, never taken as the socket): the
+  -- portraitSocket fallback (60 -> 35), flagged unmeasured; an absurd socket size is refused the same way
+  for _, sz in ipairs({ 0, 400 }) do
+    medallionStubs(sz, false, function()
+      local s = UI.Shell({ name = "TestShellV13MedalUnmeasured" .. sz, title = "x", ns = ART_NS, portraitArt = true })
+      T.eq(s.medallion.socket, 60, "socket " .. sz); T.eq(s.medallion.measured, false); T.eq(s.medallion.size, 35)
+    end)
+  end
+  -- no mask API: the v8 fill (art straight in the socket), nothing half-built left showing
+  medallionStubs(62, true, function()
+    local s = UI.Shell({ name = "TestShellV13MedalNoMask", title = "x", ns = ART_NS, portraitArt = true,
+      portrait = "Interface\\Icons\\X" })
+    T.eq(s.medallion, nil); T.eq(s.portraitArt, base .. "logo_m")
+    T.eq(s.portrait:GetTexture(), base .. "logo_m", "v8 fallback fill")
+  end)
+  -- no art: the v2 portrait, unchanged
+  medallionStubs(62, false, function()
+    local s = UI.Shell({ name = "TestShellV13MedalNone", title = "x", portraitArt = true, portrait = "Interface\\Icons\\X" })
+    T.eq(s.medallion, nil); T.eq(s.portrait:GetTexture(), "Interface\\Icons\\X")
+  end)
+  T.noErrors()
+end)
+
+T.test("Shell v14: sidebar heading = Cinzel Bold 16, #5a120c + LIGHT emboss on parchment; gold on flat", function()
+  local H = UI.ShellHeading
+  T.eq(H.size, 16)
+  local par, flat
+  recordingFonts(function()
+    par = UI.Shell({ name = "TestShellV13HeadPar", sidebar = "parchment", chrome = "portrait" })
+    par:AddTab({ id = "bloodsports", label = "Bloodsports" })
+    par:AddSection({ tab = "bloodsports", id = "ring", label = "The Ring" })
+    par:Toggle("bloodsports")
+    flat = UI.Shell({ name = "TestShellV13HeadFlat", sidebar = "flat", chrome = "portrait" })
+    flat:AddTab({ id = "elders", label = "Elders" })
+    flat:AddSection({ tab = "elders", id = "o", label = "Overview" })
+    flat:Toggle("elders")
+  end)
+  local h = par.tabById.bloodsports.heading
+  T.eq(h:GetFontSize(), 16, "16 px (was 14)")
+  T.ok(tostring(h._font[1]):find("Cinzel%-Bold"), "Cinzel Bold: " .. tostring(h._font[1]))
+  sameColor({ h:GetTextColor() }, hexc("5a120c"), "parchment heading ink-red (final recorded colour)")
+  T.eq(select(4, h:GetTextColor()), 1)
+  T.eq(select(1, h:GetShadowOffset()), 0.5); T.eq(select(2, h:GetShadowOffset()), -0.5)
+  local sc = { h:GetShadowColor() }
+  T.near(sc[1], 1, 1e-6); T.near(sc[2], 235 / 255, 1e-6); T.near(sc[3], 190 / 255, 1e-6); T.near(sc[4], 0.35, 1e-6)
+  T.ok(lum(sc) > 0.8, "a LIGHT emboss, not the v13 dark shadow")
+local hf = flat.tabById.elders.heading
+  T.eq(hf:GetFontSize(), 16)
+  sameColor({ hf:GetTextColor() }, UI.SiteTokens.gold, "flat sidebar keeps the light (gold) heading")
+  sameColor({ hf:GetShadowColor() }, UI.SiteTokens.titleShadow, "flat: the dark title shadow")
+  -- an explicit o.sidebarInk.heading still wins on parchment
+  local o
+  recordingFonts(function()
+    o = UI.Shell({ name = "TestShellV13HeadOverride", sidebar = "parchment", sidebarInk = { heading = { 0.1, 0.2, 0.3, 1 } } })
+    o:AddTab({ id = "t", label = "T" }); o:AddSection({ tab = "t", id = "a", label = "A" }); o:Toggle("t")
+  end)
+  sameColor({ o.tabById.t.heading:GetTextColor() }, { 0.1, 0.2, 0.3 }, "override")
+  T.noErrors()
+end)
+
+local LOGO_BASE = "Interface\\AddOns\\Elders\\Media\\"
+local LOGO_NS = { Media = { path = LOGO_BASE, has = { logo_main = true, logo_m = true, logo_bloodsports = true,
+  logo_elders = true } } }
+
+T.test("Shell v13: per-tab titleArt swaps the wordmark on tab switch; chain tab -> shell logo_main -> text", function()
+  local A = UI.ShellArt
+  artStubs(nil, function()
+    local s = UI.Shell({ name = "TestShellV13Logos", title = "World of Meta", chrome = "portrait", ns = LOGO_NS, titleArt = true })
+    local tabTop0, tex0 = s.tabTop, s.titleArt.texture
+    T.eq(s.titleArt.path, LOGO_BASE .. "logo_main", "no tab yet: the shell wordmark")
+    s:AddTab({ id = "bloodsports", label = "Bloodsports", order = 1, titleArt = "logo_bloodsports" })
+    s:AddTab({ id = "elders", label = "Elders", order = 2, titleArt = "logo_elders" })
+    s:AddTab({ id = "plain", label = "Plain", order = 3 })
+    for _, id in ipairs({ "bloodsports", "elders", "plain" }) do s:AddSection({ tab = id, id = "a", label = "A" }) end
+    s:Show()
+    local function check(tabId, token, w, coords)
+      T.eq(s:Select(tabId), true)
+      local art = s.titleArt
+      T.eq(art.path, LOGO_BASE .. token, tabId .. " path"); T.eq(art.texture:GetTexture(), LOGO_BASE .. token)
+      T.eq(art.token, token); T.eq(art.texture, tex0, "one texture, re-pointed")
+      T.eq(art.width, w, tabId .. " width"); T.eq(art.height, 103, tabId .. " height: the logo_main box")
+      T.eq(art.texture:GetWidth(), w); T.eq(art.texture:GetHeight(), 103)
+      sameList(art.texture._texCoord, coords, tabId .. " crop")
+      T.eq(art.texture:GetNumPoints(), 1, "re-anchored, not stacked")
+      local pt, rel, rp, x, y = art.texture:GetPoint(1)
+      T.eq(pt, "TOP"); T.eq(rel, s.frame); T.eq(x, 0); T.eq(y, A.titleLift)
+      T.eq(art.bottom, 103 - A.titleLift - A.titleTuck); T.eq(s.tabTop, tabTop0, tabId .. ": the tab strip never moves")
+      T.eq(s.title:IsShown(), false)
+      T.ok(art.width <= A.titleWidth, "fits the title band like logo_main")
+    end
+    check("bloodsports", "logo_bloodsports", 212, { 0, 1, 3 / 256, 252 / 256 })
+    check("elders", "logo_elders", 208, { 0, 1, 1 / 256, 255 / 256 })
+    check("plain", "logo_main", 240, A.titleTexCoord)      -- no titleArt on the tab: the shell's
+    check("bloodsports", "logo_bloodsports", 212, { 0, 1, 3 / 256, 252 / 256 })
+    T.eq(s.titleArt.tab, "bloodsports")
+    -- the tab owner's ns is tried first
+    local own = { Media = { path = "Interface\\AddOns\\Owner\\Media\\", has = { logo_elders = true } } }
+    s:AddTab({ id = "elders", label = "Elders", order = 2, titleArt = "logo_elders", ns = own })
+    s:Select("elders")
+    T.eq(s.titleArt.path, "Interface\\AddOns\\Owner\\Media\\logo_elders")
+    -- a path is used as given, uncropped (the previous crop reset)
+    s:AddTab({ id = "plain", label = "Plain", order = 3, titleArt = "Interface\\Custom\\Logo" })
+    s:Select("plain")
+    T.eq(s.titleArt.path, "Interface\\Custom\\Logo"); sameList(s.titleArt.texture._texCoord, { 0, 1, 0, 1 }, "crop reset")
+    -- a token the Media lacks falls through to the shell wordmark
+    s:AddTab({ id = "plain", label = "Plain", order = 3, titleArt = "logo_nope" })
+    s:Select("plain")
+    T.eq(s.titleArt.path, LOGO_BASE .. "logo_main")
+    -- no shell wordmark: art tabs swap it in, art-less tabs get the Cinzel text title back
+    local t = UI.Shell({ name = "TestShellV13LogosText", title = "World of Meta", chrome = "portrait", ns = LOGO_NS })
+    t:AddTab({ id = "bloodsports", label = "Bloodsports", order = 1, titleArt = "logo_bloodsports" })
+    t:AddTab({ id = "x", label = "X", order = 2 })
+    t:AddSection({ tab = "bloodsports", id = "a", label = "A" }); t:AddSection({ tab = "x", id = "a", label = "A" })
+    t:Show(); t:Select("bloodsports")
+    T.eq(t.titleArt.path, LOGO_BASE .. "logo_bloodsports"); T.eq(t.title:IsShown(), false)
+    local artTop = t.tabTop
+    t:Select("x")
+    T.eq(t.titleArt, nil); T.eq(t.title:IsShown(), true); T.eq(t.titleHost:IsShown(), false)
+    T.ok(t.tabTop < artTop, "layout re-run for the text title")
+    t:Select("bloodsports"); T.eq(t.tabTop, artTop); T.eq(t.titleHost:IsShown(), true)
+  end)
+  -- an erroring tab logo falls through to logo_main
+  artStubs({ [LOGO_BASE .. "logo_elders"] = true }, function()
+    local s = UI.Shell({ name = "TestShellV13LogosBad", title = "x", ns = LOGO_NS, titleArt = true })
+    s:AddTab({ id = "elders", label = "Elders", titleArt = "logo_elders" })
+    s:AddSection({ tab = "elders", id = "a", label = "A" })
+    s:Show(); s:Select("elders")
+    T.eq(s.titleArt.path, LOGO_BASE .. "logo_main")
+  end)
+  -- the demo carries the same per-tab wordmarks as the shared shell
+  local demo = UI.ChromeDemo()
+  T.eq(demo.tabById.bloodsports.titleArt, "logo_bloodsports"); T.eq(demo.tabById.elders.titleArt, "logo_elders")
+  demo:Hide()
+  T.noErrors()
+end)
+
+T.test("SharedShell v13: suite tabs get logo_bloodsports / logo_elders, each found in its own addon's Media", function()
+  local prevShell = UI._sharedShell
+  UI._sharedShell = nil
+  local ok, err = pcall(function()
+    T.eq(UI.SharedTitleArt.bloodsports, "logo_bloodsports"); T.eq(UI.SharedTitleArt.elders, "logo_elders")
+    local nsB = { Media = { path = "Interface\\AddOns\\Bloodsports\\Media\\", has = { logo_main = true, logo_bloodsports = true } } }
+    local nsE = { Media = { path = "Interface\\AddOns\\Elders\\Media\\", has = { logo_main = true, logo_elders = true } } }
+    local def = { id = "bloodsports", label = "Bloodsports", order = 1 }
+    UI.RegisterSharedTab(def)
+    T.eq(def.titleArt, nil, "the caller's table is not mutated")
+    UI.RegisterSharedTab({ id = "elders", label = "Elders", order = 2 })
+    UI.RegisterSharedTab({ id = "other", label = "Other", order = 3, titleArt = false })
+    for _, id in ipairs({ "bloodsports", "elders", "other" }) do UI.RegisterSharedSection({ tab = id, id = "a", label = "A" }) end
+    UI.SharedShellNamespace(nsE)
+    local shell = UI.SharedShell({}, nsB)
+    T.eq(shell.tabById.bloodsports.titleArt, "logo_bloodsports"); T.eq(shell.tabById.elders.titleArt, "logo_elders")
+    shell:Show()
+    shell:Select("bloodsports"); T.eq(shell.titleArt.path, "Interface\\AddOns\\Bloodsports\\Media\\logo_bloodsports")
+    shell:Select("elders"); T.eq(shell.titleArt.path, "Interface\\AddOns\\Elders\\Media\\logo_elders")
+    shell:Select("other"); T.ok(shell.titleArt.path:find("logo_main$"), "titleArt = false keeps logo_main")
+    T.eq(shell.flanks, nil)
+    shell:Hide()
+  end)
+  UI._sharedShell = prevShell
+  if not ok then error(err, 0) end
+end)
+
+-- v14 ---------------------------------------------------------------------------------------------------------------
+
+T.test("Shell v14: nav icons 18 px, trimmed 0.08-0.92, in a 1 px (40,28,12) frame shown with the icon", function()
+  local m = UI.ShellMetrics
+  T.eq(m.navIcon, 18); T.eq(m.navIconTrim, 0.08)
+  local r = UI.ShellNavRow(UIParent, UI.SiteTokens.sidebarInk)
+  T.eq(r.iconTrim, 0.08)
+  T.eq(r.icon:GetWidth(), 18); T.eq(r.icon:GetHeight(), 18)
+  T.eq(r.iconEdge:GetWidth(), 20, "1 px frame each side"); T.eq(r.iconEdge:GetHeight(), 20)
+  T.eq(r.iconEdge._points[1][1], "CENTER"); T.eq(r.iconEdge._points[1][2], r.icon)
+  local e = m.navIconEdge
+  T.near(e[1], 40 / 255, 1e-6); T.near(e[2], 28 / 255, 1e-6); T.near(e[3], 12 / 255, 1e-6)
+  T.eq(r.iconEdge:IsShown(), false, "no icon, no frame")
+  r:SetIcon("Interface\\Icons\\X")
+  T.eq(r.icon:IsShown(), true); T.eq(r.iconEdge:IsShown(), true)
+  T.eq(r.label._points[1][4], 8 + 18 + 8, "label clears the 18 px icon")
+  -- the texcoords themselves: frames made inside record SetTexCoord on their textures
+  local prev = CreateFrame
+  CreateFrame = function(...)
+    local f = prev(...)
+    local make = f.CreateTexture
+    f.CreateTexture = function(frame, ...)
+      local t = make(frame, ...)
+      t.SetTexCoord = function(self, ...) self._tc = { ... } end
+      return t
+    end
+    return f
+  end
+  local okRec, err = pcall(function()
+    local row = UI.ShellNavRow(UIParent, nil)
+    local tc = row.icon._tc
+    T.ok(tc, "texcoords set")
+    T.near(tc[1], 0.08, 1e-9); T.near(tc[2], 0.92, 1e-9); T.near(tc[3], 0.08, 1e-9); T.near(tc[4], 0.92, 1e-9)
+  end)
+  CreateFrame = prev
+  if not okRec then error(err, 0) end
+  T.noErrors()
+end)
+
+T.test("List v14: gutter text boxes, flex columns span the width, inset chrome, left empty copy, HeightFor", function()
+  local l = UI.List(UIParent, { width = 600, height = 200, rowHeight = 22, headerHeight = 22, chrome = "inset",
+    gutter = 16, emptyAlign = "LEFT", empty = "Nothing here.", emptyHint = "Do the thing.",
+    columns = { { key = "a", title = "A" }, { key = "n", title = "N", width = 70, align = "RIGHT" },
+      { key = "b", title = "B", width = 90, align = "RIGHT" } } })
+  l:LayoutColumns()
+  local c = l.columns
+  T.eq(l.gutter, 16); T.near(l.columnsWidth, 600 - l.scrollWidth - 8 - 2, 1e-6, "flex column takes the rest")
+  T.near(c[2].textL - c[1].textR, 16, 1e-6); T.near(c[3].textL - c[2].textR, 16, 1e-6)
+  T.eq(c[2].textL, c[2].x + 8); T.eq(c[2].textR, c[2].x + 70 - 8)
+  T.ok(l.chrome and l.chrome.bg and l.chrome.head and l.chrome.edges.left, "inset chrome")
+  T.eq(l.chrome.edges.top:GetHeight(), 1); T.eq(l.chrome.head:GetHeight(), 22)
+  T.eq(l.body._points[1][4], 1, "rows inset 1 px from the edge"); T.eq(l.body._points[1][5], -(22 + 1))
+  T.eq(l:HeightFor(2), 22 + 2 + 44); T.eq(l:HeightFor(0), 24)
+  l:SetData({})
+  T.eq(l.emptyText:IsShown(), true); T.eq(l.emptyHintText:IsShown(), true)
+  local pt, rel, rp, x, y = l.emptyText:GetPoint(1)
+  T.eq(pt, "LEFT"); T.eq(rel, l.body); T.eq(rp, "TOPLEFT"); T.eq(x, 4 + 8); T.eq(y, -11)
+  T.eq(select(5, l.emptyHintText:GetPoint(1)), -33)
+  -- defaults unchanged: 4 px gutter (2 per side), centred empty copy, no chrome
+  local d = UI.List(UIParent, { width = 400, columns = { { key = "a", title = "A", width = 100 }, { key = "b", title = "B" } } })
+  d:LayoutColumns()
+  T.eq(d.gutter, 4); T.eq(d.chrome, nil); T.eq(d.columns[1].textL, d.columns[1].x + 2)
+  T.eq((d.emptyText:GetPoint(1)), "CENTER")
+  T.noErrors()
 end)
 
 T.done()

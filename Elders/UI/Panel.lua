@@ -205,7 +205,7 @@ end
 -- Shared shell adapter
 --
 -- Elders is one tab ("elders") of the shared World of Meta shell (MetaKit UI.SharedShell) with one section, "overview":
--- the character row, the bracket tab strip, the stat rows and the Sync / Export / Settings buttons, built once into
+-- the character row, the bracket tab strip, the stat rows and the Export / Settings buttons, built once into
 -- the section's host frame. The standalone EldersPanel window is gone; UI.Panel() returns the section host frame.
 -- CONTRACT NOTE: TOGGLE_PANEL's argument is a section id ("overview"); none = toggle the window on the Elders tab.
 
@@ -258,6 +258,31 @@ local function summary()
   }
 end
 UI.ShellSummary = summary
+
+-- v15 (JUDGE3 E2 / F-6): the sidebar context card under the summary.
+-- v17 (judge5): the BRACKET card (bracket + XP/h + played) repeated the pane under it; the card is now RECENT LEVELS:
+-- the last RECENT_LEVELS finished levels with a recorded time (char.levels[lvl].sec, set at the ding from /played),
+-- newest first, "Lv 18 — 2h 13m"; none yet -> one soft "No timed levels yet." line.
+local RECENT_LEVELS = 3
+function UI.RecentLevelLines(levels, n)
+  local got = {}
+  for lvl, row in pairs(type(levels) == "table" and levels or {}) do
+    local sec = type(row) == "table" and tonumber(row.sec) or nil
+    if type(lvl) == "number" and sec and sec > 0 then got[#got + 1] = { lvl = lvl, sec = sec } end
+  end
+  table.sort(got, function(a, b) return a.lvl > b.lvl end)
+  local lines = {}
+  for i = 1, math.min(n or RECENT_LEVELS, #got) do
+    lines[i] = "Lv " .. got[i].lvl .. " \226\128\148 " .. U.Duration(got[i].sec)
+  end
+  if #lines == 0 then lines[1] = { text = "No timed levels yet.", soft = true } end
+  return lines
+end
+
+local function card()
+  return { title = "RECENT LEVELS", lines = UI.RecentLevelLines(ns.char and ns.char.levels, RECENT_LEVELS) }
+end
+UI.ShellCard = card
 
 local function summarySignature()
   local parts = {}
@@ -313,24 +338,31 @@ local function build(c)
   for i = 1, MAX_BRACKET do labels[i] = U.BracketLabel(i) end
   labels[MAX_BRACKET + 1] = "All"
   tabs = MK.UI.Tabs(c, { labels = labels, skin = UI.SKIN, width = innerW, onSelect = function(i)
-    if type(i) == "number" and i ~= tab then tab = i; refresh() end
+    if type(i) == "number" and i ~= tab then
+      tab = i; refresh()
+      local s = shell()
+      if s and s.RefreshSidebar then pcall(s.RefreshSidebar, s) end -- the sidebar card re-reads on tab switch
+    end
   end })
   tabs:SetPoint("TOPLEFT", c, "TOPLEFT", 0, -40)
 
   rows = MK.UI.StatRows(c, { skin = UI.SKIN, railGap = 6 }) -- 6 px between rules/values and the scrollbar
   rows:SetPoint("TOPLEFT", c, "TOPLEFT", 0, -72)
-  rows:SetPoint("BOTTOMRIGHT", c, "BOTTOMRIGHT", 0, 33) -- 8 px above the lifted buttons
+  rows:SetPoint("BOTTOMRIGHT", c, "BOTTOMRIGHT", 0, 31) -- 8 px above the button row
 
-  -- three equal buttons (at most 150 px each), 8 px apart, along the section's bottom edge
-  local bw = math.min(150, (innerW - 16) / 3)
+  -- v15 (JUDGE3 E3 / E5 / F-8): no pane Sync (the sidebar's gold "Sync now" is the one sync control); Export and
+  -- Settings are secondary buttons (dark plate, gold-dim edge), 22 px tall, right-aligned to the pane edge, 8 px apart
+  local BTN_W, BTN_H, BTN_GAP = 110, 22, 8
+  UI.PanelButtons = {}
   local function button(text, slot, onClick, tip)
-    local btn = MK.UI.Button(c, { text = text, width = bw, height = 24, onClick = onClick, tooltip = tip, skin = UI.SKIN })
-    btn:SetPoint("BOTTOMLEFT", c, "BOTTOMLEFT", (slot - 1) * (bw + 8), 1)
+    local btn = MK.UI.Button(c, { text = text, width = BTN_W, height = BTN_H, variant = "secondary", onClick = onClick,
+      tooltip = tip, skin = UI.SKIN })
+    btn:SetPoint("BOTTOMRIGHT", c, "BOTTOMRIGHT", -(slot - 1) * (BTN_W + BTN_GAP), 1)
+    UI.PanelButtons[text] = btn
     return btn
   end
-  button("Sync", 1, function() ReloadUI() end, "Reload the interface so the Meta Uploader can pick up new data.")
+  button("Settings", 1, function() UI.OpenSettings() end)
   button("Export", 2, function() A:Fire("SHOW_EXPORT") end, "Copy your stats as a string for the website.")
-  button("Settings", 3, function() UI.OpenSettings() end)
 
   pcall(tabs.Select, tabs, tab)
   if not ticking then
@@ -346,7 +378,7 @@ local function register()
   if not (k and k.RegisterSharedTab and k.RegisterSharedSection and k.SharedShell) then return false end
   registered = true
   k.SharedShellNamespace(ns)
-  k.RegisterSharedTab({ id = TAB, label = "Elders", owner = ADDON, order = 2, summary = summary })
+  k.RegisterSharedTab({ id = TAB, label = "Elders", owner = ADDON, order = 2, summary = summary, card = card })
   k.RegisterSharedSection({ tab = TAB, id = SECTION, label = "Overview", order = 1,
     icon = "Interface\\Icons\\INV_Misc_Book_09", build = build, onShow = function() refreshCurrent() end })
   return true

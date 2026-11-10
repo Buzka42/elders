@@ -84,6 +84,43 @@ T.test("sidebar summary: level, played, rank", function()
   T.eq(lines[3].value, UI.RankName(1))
 end)
 
+T.test("v15 (JUDGE3 E3 / E5 / F-6 / F-8): no pane Sync; Export + Settings secondary, 22 px, right-aligned; RECENT LEVELS card", function()
+  local shell = MK.UI._sharedShell
+  A:Fire("TOGGLE_PANEL", "overview")
+  local b = UI.PanelButtons
+  T.ok(b and b.Export and b.Settings, "Export and Settings built")
+  T.eq(b.Sync, nil, "the sidebar Sync now is the one sync control")
+  for _, name in ipairs({ "Export", "Settings" }) do
+    T.eq(b[name].tier, "secondary", name .. " is the dark gold-dim plate"); T.eq(b[name]:GetHeight(), 22)
+  end
+  local pt, rel, rp, x, y = b.Settings:GetPoint(1)
+  T.eq(pt, "BOTTOMRIGHT"); T.eq(rp, "BOTTOMRIGHT"); T.eq(x, 0, "Settings on the pane's right edge")
+  pt, rel, rp, x = b.Export:GetPoint(1)
+  T.eq(pt, "BOTTOMRIGHT"); T.eq(x, -(b.Settings:GetWidth() + 8), "Export 8 px left of Settings")
+  -- v17 (judge5): RECENT LEVELS replaces the BRACKET card (it repeated the pane)
+  local tab = shell.tabById.elders
+  local saved = ns.char.levels
+  ns.char.levels = {}
+  shell:RefreshSidebar()
+  T.eq(tab.cardTitle, "RECENT LEVELS")
+  T.eq(#tab.cardLines, 1); T.eq(tab.cardLines[1], "No timed levels yet.")
+  T.eq(UI.RecentLevelLines({})[1].soft, true, "the empty line is the soft one")
+  -- newest first, at most 3; untimed rows (sec 0, the level in progress) and junk are skipped
+  ns.char.levels = { [15] = { sec = 3000 }, [16] = { sec = 4500 }, [17] = { sec = 59 }, [18] = { sec = 7980 },
+    [19] = { sec = 0, deaths = 1 }, [14] = { sec = 2000 }, x = { sec = 5 } }
+  shell:RefreshSidebar()
+  T.eq(tab.cardTitle, "RECENT LEVELS")
+  local D = "\226\128\148"
+  T.eq(#tab.cardLines, 3)
+  T.eq(tab.cardLines[1], "Lv 18 " .. D .. " 2h 13m")
+  T.eq(tab.cardLines[2], "Lv 17 " .. D .. " 59s")
+  T.eq(tab.cardLines[3], "Lv 16 " .. D .. " 1h 15m")
+  T.eq(#UI.RecentLevelLines(ns.char.levels, 5), 5, "n caps the list")
+  ns.char.levels = saved
+  shell:RefreshSidebar()
+  T.noErrors()
+end)
+
 T.test("/elders and TOGGLE_PANEL select the elders tab from another tab; named section never closes", function()
   local shell = MK.UI._sharedShell
   loaded.Other = true
