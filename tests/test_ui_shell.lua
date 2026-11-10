@@ -1702,30 +1702,6 @@ T.test("Shell v8: titleArt draws the wordmark, hides the Cinzel title, clears th
   T.noErrors()
 end)
 
-T.test("Shell v8: portraitArt fills the native portrait socket; falls back to o.portrait", function()
-  local base = ART_NS.Media.path
-  artStubs(nil, function()
-    local s = UI.Shell({ name = "TestShellV8Portrait", title = "x", ns = ART_NS, portraitArt = true,
-      portrait = "Interface\\Icons\\X" })
-    T.ok(s.hasPortrait, "socket found")
-    -- v13: the art sits on its own fitted texture (shell.medallion); the socket texture is the dark backing
-    T.eq(s.portraitArt, base .. "logo_m"); T.ok(s.medallion, "medallion fitted")
-    T.eq(s.medallion.texture:GetTexture(), base .. "logo_m"); T.eq(s.portrait:GetTexture(), "Interface\\Buttons\\WHITE8X8")
-    sameList(s.medallion.texture._texCoord, { 0, 1, 0, 1 }, "full texture in the medallion")
-    local p = UI.Shell({ name = "TestShellV8PortraitPath", title = "x", portraitArt = "Interface\\Custom\\M" })
-    T.eq(p.medallion.texture:GetTexture(), "Interface\\Custom\\M")
-    local n = UI.Shell({ name = "TestShellV8PortraitNone", title = "x", portraitArt = true, portrait = "Interface\\Icons\\X" })
-    T.eq(n.portrait:GetTexture(), "Interface\\Icons\\X", "no art -> o.portrait"); T.eq(n.portraitArt, nil)
-    T.eq(n.medallion, nil)
-  end)
-  artStubs({ ["Interface\\AddOns\\Elders\\Media\\logo_m"] = true }, function()
-    local b = UI.Shell({ name = "TestShellV8PortraitBad", title = "x", ns = ART_NS, portraitArt = true,
-      portrait = "Interface\\Icons\\X" })
-    T.eq(b.portrait:GetTexture(), "Interface\\Icons\\X", "erroring art -> o.portrait"); T.eq(b.portraitArt, nil)
-  end)
-  T.noErrors()
-end)
-
 T.test("Shell v8: corners draw 4 mirrored 72 px ornaments between the border and the title art", function()
   local base = ART_NS.Media.path
   artStubs(nil, function()
@@ -1763,9 +1739,10 @@ T.test("Shell v8: corners draw 4 mirrored 72 px ornaments between the border and
   T.noErrors()
 end)
 
-T.test("/mkchrome v8: the demo asks for title art, the M portrait and corners (off without Media in the stub)", function()
+T.test("/mkchrome v8: the demo asks for title art, no portrait medallion, no corners (off without Media in the stub)", function()
   local shell = UI.ChromeDemo()
-  T.eq(shell.opts.titleArt, true); T.eq(shell.opts.portraitArt, true)
+  T.eq(shell.opts.titleArt, true); T.eq(shell.opts.portraitArt, nil, "v18: no portraitArt (template portrait)")
+  T.eq(shell.opts.sidebarWatermark, nil, "v18: no sidebar watermark")
   T.eq(shell.opts.corners, nil, "v14: corner ornaments removed (the bottom pair read as a clipping accident)")
   -- the stub loads Demo.lua with no addon ns, so every piece falls back to the v7 look
   T.eq(shell.titleArt, nil); T.eq(shell.corners, nil); T.eq(shell.title:IsShown(), true)
@@ -2026,7 +2003,7 @@ T.test("Shell v10: titleTuck 6; flankArt crests resolve, sit centred in the titl
   T.eq(A.titleTuck, 6); T.eq(A.flankSize, 52); T.eq(A.flankInset, 64)
   artStubs(nil, function()
     local s = UI.Shell({ name = "TestShellV10Flank", title = "World of Meta", chrome = "portrait", ns = FLANK_NS,
-      titleArt = true, portraitArt = true, closeStyle = "plate",
+      titleArt = true, closeStyle = "plate",
       flankArt = { left = "crest_bloodsports", right = { "crest_elders", "crest_tournament" } } })
     T.ok(s.flanks, "flanks built")
     T.eq(s.titleArt.bottom, 103 - 10 - 6)
@@ -2086,7 +2063,7 @@ T.test("Shell v11: flank crests 52 px, anchored 18 px outside the wordmark, each
   T.eq(A.flankInset, 64, "edge inset kept for the no-logo case")
   artStubs(nil, function()
     local s = UI.Shell({ name = "TestShellV11Flank", title = "World of Meta", chrome = "portrait", ns = FLANK_NS,
-      titleArt = true, portraitArt = true, closeStyle = "plate",
+      titleArt = true, closeStyle = "plate",
       flankArt = { left = "crest_bloodsports", right = { "crest_elders", "crest_tournament" } } })
     local logo, L, R = s.titleArt.texture, s.flanks.left, s.flanks.right
     local cy = s.tabTop / 2
@@ -2211,99 +2188,74 @@ T.test("SharedShell: singleton, queued tabs / sections drain on creation, ns art
   if not ok then error(err, 0) end
 end)
 
--- v13 (owner it11 defects): medallion fit, sidebar heading, per-tab wordmarks.
--- Inside artStubs: the template portrait reports `socket` px (0 = unmeasured) and a draw layer, textures record their
--- layer / masks, mask textures record SetAllPoints. `noMask` makes CreateMaskTexture raise (an old client).
-local function medallionStubs(socket, noMask, fn)
+-- v13 (owner it11 defects): sidebar heading, per-tab wordmarks. v18 (owner): the portrait medallion is reverted.
+-- Inside artStubs: the template portrait reports `socket` px; every texture records its SetTexture paths into
+-- log.sets and the masks added to it (_masks); mask textures created anywhere are counted in log.masks.
+local function portraitStubs(socket, fn)
+  local log = { sets = {}, masks = 0 }
   artStubs(nil, function()
     local inner = CreateFrame
     CreateFrame = function(kind, name, parent, template)
       local f = inner(kind, name, parent, template)
       local make = f.CreateTexture
-      f.CreateTexture = function(frame, n, layer, tpl, sub)
-        local t = make(frame, n, layer, tpl, sub)
-        t._layer = { layer, sub }
+      f.CreateTexture = function(frame, ...)
+        local t = make(frame, ...)
+        local set = t.SetTexture
+        t.SetTexture = function(self, path, ...)
+          table.insert(log.sets, { tex = self, path = path })
+          return set(self, path, ...)
+        end
         t.AddMaskTexture = function(self, m) self._masks = self._masks or {}; table.insert(self._masks, m) end
         return t
       end
       local makeMask = f.CreateMaskTexture
-      f.CreateMaskTexture = function(frame, ...)
-        if noMask then error("CreateMaskTexture: not on this client") end
-        local m = makeMask(frame, ...)
-        m.SetAllPoints = function(self, rel) self._allPoints = rel end
-        return m
-      end
+      f.CreateMaskTexture = function(frame, ...) log.masks = log.masks + 1; return makeMask(frame, ...) end
       if template == "PortraitFrameTemplate" then
         local p = f:CreateTexture(nil, "OVERLAY", nil, -1)
         p:SetSize(socket, socket)
-        p.GetDrawLayer = function() return "OVERLAY", -1 end
         f.GetPortrait = function() return p end
       end
       return f
     end
-    local ok, err = pcall(fn)
+    local ok, err = pcall(fn, log)
     CreateFrame = inner
     if not ok then error(err, 0) end
   end)
 end
 
-T.test("Shell v13-v17: portraitArt medallion = 58% of the MEASURED socket, lifted, masked by one 86% disc", function()
+T.test("Shell v18: the portrait socket is the template's own texture (o.portrait); no medallion art, mask or disc", function()
   local A, base = UI.ShellArt, ART_NS.Media.path
-  T.eq(A.medallionScale, 0.58, "v17 (judge5): 63% still crowded the rim (v16: 76% cut the M's legs)")
-  T.eq(A.medallionDisc, 0.86); T.eq(A.medallionLift, 0.015)
-  T.ok(A.medallionScale < A.medallionDisc * 0.70, "art < 70% of the disc: a dark margin ring on every side")
-  T.eq(A.portraitMask, "Interface\\CharacterFrame\\TempPortraitAlphaMask")
-  medallionStubs(62, false, function()
-    local s = UI.Shell({ name = "TestShellV13Medal", title = "x", chrome = "portrait", ns = ART_NS, portraitArt = true,
-      portrait = "Interface\\Icons\\X" })
-    local med, p = s.medallion, s.portrait
-    T.ok(med, "medallion fitted")
-    T.eq(med.socket, 62); T.eq(med.measured, true, "size from the socket's own GetWidth, not a constant")
-    T.eq(med.size, math.floor(62 * 0.58 + 0.5)); T.eq(med.size, 36)
-    T.eq(med.disc, math.floor(62 * 0.86 + 0.5)); T.eq(med.disc, 53)
-    T.ok(med.size < med.disc * 0.70, "art " .. med.size .. " < 70% of disc " .. med.disc)
-    T.ok((med.disc - med.size) / 2 >= 0.1 * med.disc, "~10%+ of the disc diameter dark margin left / right")
-    T.ok((med.disc - med.size) / 2 >= 0.1 * med.socket, "v17: ~10%+ of the socket dark margin on every side")
-    T.eq(med.lift, 1, "nudged up 1.5% of the socket")
-    local t = med.texture
-    T.ok(t ~= p, "own texture, not the template's")
-    T.eq(t:GetTexture(), base .. "logo_m"); T.eq(t:GetWidth(), 36); T.eq(t:GetHeight(), 36)
-    T.eq(t:GetNumPoints(), 1)
-    local pt, rel, rp, x, y = t:GetPoint(1)
-    T.eq(pt, "CENTER"); T.eq(rel, p); T.eq(rp, "CENTER"); T.eq(x, 0); T.eq(y, 1)
-    T.eq(t._layer[1], "OVERLAY"); T.eq(t._layer[2], 0, "one sublevel over the socket texture")
-    -- explicit masks: the medallion and the dark backing are both cut by the disc circle centred on the SOCKET
-    -- (never the art's own inscribed circle, which clipped the M's legs)
-    for _, m in ipairs({ med.mask, med.backingMask }) do
-      T.eq(m:GetTexture(), A.portraitMask); T.eq(m._allPoints, nil)
-      T.eq(m:GetWidth(), 53); T.eq(m:GetHeight(), 53)
-      local mpt, mrel, mrp, mx, my = m:GetPoint(1)
-      T.eq(mpt, "CENTER"); T.eq(mrel, p); T.eq(mrp, "CENTER"); T.eq(mx, 0); T.eq(my, 0)
-    end
-    T.eq(#(t._masks or {}), 1); T.eq(t._masks[1], med.mask)
-    T.eq(#(p._masks or {}), 1); T.eq(p._masks[1], med.backingMask)
-    T.eq(p:GetTexture(), "Interface\\Buttons\\WHITE8X8", "socket is the dark backing")
-    T.ok(med.size < med.socket, "inside the ring")
-  end)
-  -- a socket that reports no size yet (its parent here is the 960 px window, never taken as the socket): the
-  -- portraitSocket fallback (60 -> 35), flagged unmeasured; an absurd socket size is refused the same way
-  for _, sz in ipairs({ 0, 400 }) do
-    medallionStubs(sz, false, function()
-      local s = UI.Shell({ name = "TestShellV13MedalUnmeasured" .. sz, title = "x", ns = ART_NS, portraitArt = true })
-      T.eq(s.medallion.socket, 60, "socket " .. sz); T.eq(s.medallion.measured, false); T.eq(s.medallion.size, 35)
+  for _, k in ipairs({ "medallionScale", "medallionDisc", "medallionLift", "portraitMask" }) do
+    T.eq(A[k], nil, "UI.ShellArt." .. k .. " removed")
+  end
+  T.eq(UI.ShellFitMedallion, nil, "fitMedallion removed")
+  -- an old caller's portraitArt = true (art available in the ns) is ignored
+  for _, o in ipairs({ { portraitArt = true }, { portraitArt = "Interface\\Custom\\M" }, {} }) do
+    portraitStubs(62, function(log)
+      o.name, o.title, o.chrome, o.ns, o.portrait = "TestShellV18Portrait" .. #log.sets .. tostring(o.portraitArt),
+        "x", "portrait", ART_NS, "Interface\\Icons\\X"
+      local s = UI.Shell(o)
+      local p = s.portrait
+      T.ok(s.hasPortrait, "socket found"); T.eq(s.medallion, nil); T.eq(s.portraitArt, nil)
+      T.eq(p:GetTexture(), "Interface\\Icons\\X", "the template's portrait texture carries o.portrait")
+      T.eq(p._masks, nil, "no mask on the socket")
+      local socketSets, artSets = {}, 0
+      for _, e in ipairs(log.sets) do
+        if e.tex == p then table.insert(socketSets, e.path) end
+        if e.path == base .. "logo_m" or e.path == "Interface\\Custom\\M" then artSets = artSets + 1 end
+        -- no custom texture is centred on the socket (the old medallion / disc anchor)
+        if e.tex ~= p and e.tex.GetNumPoints and e.tex:GetNumPoints() > 0 then
+          T.ok(select(2, e.tex:GetPoint(1)) ~= p, "texture " .. tostring(e.path) .. " not anchored to the socket")
+        end
+      end
+      T.eq(artSets, 0, "no texture is given the medallion art")
+      T.eq(#socketSets, 1, "the socket is textured once"); T.eq(socketSets[1], "Interface\\Icons\\X")
     end)
   end
-  -- no mask API: the v8 fill (art straight in the socket), nothing half-built left showing
-  medallionStubs(62, true, function()
-    local s = UI.Shell({ name = "TestShellV13MedalNoMask", title = "x", ns = ART_NS, portraitArt = true,
-      portrait = "Interface\\Icons\\X" })
-    T.eq(s.medallion, nil); T.eq(s.portraitArt, base .. "logo_m")
-    T.eq(s.portrait:GetTexture(), base .. "logo_m", "v8 fallback fill")
-  end)
-  -- no art: the v2 portrait, unchanged
-  medallionStubs(62, false, function()
-    local s = UI.Shell({ name = "TestShellV13MedalNone", title = "x", portraitArt = true, portrait = "Interface\\Icons\\X" })
-    T.eq(s.medallion, nil); T.eq(s.portrait:GetTexture(), "Interface\\Icons\\X")
+  -- no o.portrait: the unknown icon, as in v2
+  portraitStubs(62, function()
+    local s = UI.Shell({ name = "TestShellV18PortraitDefault", title = "x", chrome = "portrait" })
+    T.eq(s.portrait:GetTexture(), UI.Tex.unknown)
   end)
   T.noErrors()
 end)

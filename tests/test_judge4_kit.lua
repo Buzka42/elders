@@ -1,5 +1,5 @@
--- judge4 fix lane, kit side: the sidebar watermark (shown / hidden by the parchment left between the card and Sync,
--- alpha recorded), the card's ink colours on parchment (#1a1006 lines, #4a3418 soft line, never grey) and the native
+-- judge4 fix lane, kit side: the sidebar watermark option (shown / hidden by the parchment left between the card and
+-- Sync, alpha recorded; v18: default off and the shared shell no longer enables it), the card's ink colours on parchment (#1a1006 lines, #4a3418 soft line, never grey) and the native
 -- checkbox size pass-through. Stub limits: no rendering, so "faint" is the alpha handed to SetAlpha and colours are
 -- the values handed to the API, never sampled pixels; the stub accepts every template and every SetSize, so the
 -- "template ignores SetSize" case is only covered by the holder anchors (two corners pinned to a 26 px frame).
@@ -59,7 +59,7 @@ T.test("watermark: logo_m centred between the card and Sync at 10% alpha when th
   T.eq(tab.cardBottom, nil); T.eq(tab.watermark.top, tab.summaryBottom + 8); T.eq(tab.watermark.shown, true)
 end)
 
-T.test("watermark: off by default, a path option, unresolved token hides, the shared shell turns it on", function()
+T.test("watermark: off by default, a path option, unresolved token hides, the shared shell leaves it off (v18)", function()
   local _, tab = shell("TestJ4WmOff")
   T.eq(tab.watermark.shown, false); T.eq(tab.wmTex, nil, "nothing created when off")
   local _, tab2 = shell("TestJ4WmPath", { sidebarWatermark = "Interface\\Custom\\WM" })
@@ -68,8 +68,14 @@ T.test("watermark: off by default, a path option, unresolved token hides, the sh
   T.eq(tab3.watermark.shown, false)
   local ns = { Media = { path = "Interface\\AddOns\\Bloodsports\\Media\\", has = { logo_m = true } } }
   local sh = UI.SharedShell({}, ns)
-  T.eq(sh.opts.sidebarWatermark, true)
-  T.eq(sh:WatermarkPath(), "Interface\\AddOns\\Bloodsports\\Media\\logo_m", "logo_m through the registered ns")
+  T.eq(sh.opts.sidebarWatermark, nil, "v18 (owner): the shared shell does not enable the watermark")
+  T.eq(sh.opts.portraitArt, nil, "v18 (owner): no portrait medallion either")
+  T.eq(sh:WatermarkPath(), nil, "no watermark art resolved")
+  sh.sidebar:SetHeight(560)
+  sh:AddTab({ id = "t", label = "T" })
+  sh:AddSection({ tab = "t", id = "a", label = "A", build = function(f) return f end })
+  sh:Show(); sh:Select("t", "a")
+  T.eq(sh.tabById.t.watermark.shown, false); T.eq(sh.tabById.t.wmTex, nil, "no watermark texture created")
 end)
 
 T.test("card ink on parchment: lines #1a1006, the soft empty line #4a3418 (not grey), title unchanged", function()

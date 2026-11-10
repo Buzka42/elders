@@ -635,9 +635,9 @@ function UI.ChromeDemo(msg)
       sidebarWidth = UI.ShellMetrics.compactSidebar,
       portrait = "Interface\\Icons\\INV_Misc_Book_09", footerText = "Sync now", footerKind = "gold",
       chrome = kind, sidebar = "parchment", nativeButtons = buttons,
-      -- v8 art: wordmark title, M medallion portrait (each off when the art is missing)
+      -- v8 art: wordmark title (off when the art is missing); v18: no portrait medallion (template portrait)
       -- v14: same option set as the shared shell: gold Sync plate, native close, no corner ornaments
-      ns = type(demoNs) == "table" and demoNs or nil, titleArt = true, portraitArt = true,
+      ns = type(demoNs) == "table" and demoNs or nil, titleArt = true,
       -- v13: no crest flanks (owner); per-tab wordmarks below, as in the shared shell
       summary = function(_, tabId) return SUMMARY[tabId] end,
       footerTooltip = { "Sync now", { "Reloads the UI so the uploader can pick up your data." } },

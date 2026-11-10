@@ -1,6 +1,6 @@
 -- JUDGE3 fix lane, kit side: two button tiers (F-8), native checks + dropdown arrows (F-10), the List header assert
 -- and first-text-column empty inset (F-1 / F-11), the shell's sidebar context card (F-6), the summary dash (S6), the
--- medallion scale (S8) and currentSection-before-onShow (the F-1 refresh race). Stub limits: no rendering; text is
+-- medallion scale (S8; v18: the medallion is removed) and currentSection-before-onShow (the F-1 refresh race). Stub limits: no rendering; text is
 -- measured at 6 px/char; colours are the values handed to the API, never sampled pixels.
 local stubPath = os.getenv("WOW_STUB") or "tests/wow_stub.lua"
 local T = dofile(stubPath)
@@ -117,9 +117,8 @@ T.test("F-11 List: a LEFT empty state starts at the first TEXT column, past an i
   T.eq(t.emptyInset, 4 + 8, "text-first table: unchanged")
 end)
 
-T.test("S8 medallion (v17: 58%, art < 70% of the disc); F-1 race: currentSection set before onShow fires", function()
-  T.eq(UI.ShellArt.medallionScale, 0.58)
-  T.ok(UI.ShellArt.medallionScale < UI.ShellArt.medallionDisc * 0.70, "art size < disc size * 0.70")
+T.test("S8 medallion gone (v18: template portrait); F-1 race: currentSection set before onShow fires", function()
+  T.eq(UI.ShellArt.medallionScale, nil); T.eq(UI.ShellArt.medallionDisc, nil)
   local s = UI.Shell({ name = "TestJ3Race", title = "x", db = {}, sidebar = "parchment" })
   local seen = {}
   s:AddTab({ id = "t", label = "T" })

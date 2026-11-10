@@ -28,13 +28,14 @@
 --     titleArt = true | path      -- "logo_main" wordmark, UI.ShellArt.titleWidth wide (v9: 240; 800:344), centred,
 --       10 px over the top edge; hides the Cinzel title (shell.titleArt) and pushes the tab strip below it (v9: the
 --       strip tucks UI.ShellArt.titleTuck px under the wordmark's narrow bottom tip)
---     portraitArt = true | path   -- "logo_m" in the native portrait socket (shell.portraitArt), else o.portrait
+--     (v18: no portraitArt -- the native socket shows the template's own portrait texture with o.portrait, no custom
+--       art / mask / disc; an o.portraitArt passed by an old caller is ignored)
 --     corners = true | "all" | "bottom" | path  -- "ornament_corner", 72 px in all four corners, mirrored by
 --       SetTexCoord, above the border and below the title art (shell.corners = { host, textures, path, mode }).
---       v9: "bottom" draws only BL / BR (the top pair hides under the portrait medallion and the close button)
+--       v9: "bottom" draws only BL / BR (the top pair hides under the portrait and the close button)
 --   v10: flankArt = { left = v, right = v }  -- crests flanking the wordmark in the title band: 44 px
 --       (UI.ShellArt.flankSize), centred vertically between the frame top and the tab strip, left edge at +64 (clears
---       the portrait medallion), right edge mirrored at -64 (clears the close plate). v = true (the side's default
+--       the portrait), right edge mirrored at -64 (clears the close plate). v = true (the side's default
 --       tokens, UI.ShellArt.flankTokens: left "crest_bloodsports", right "crest_elders" then "crest_tournament"), a
 --       token name, a texture path (contains a slash), or a list of those tried in order. Tokens resolve through
 --       MK.UI.Art(o.ns, name) (or o.art). Missing / failing art hides that side (shell.flanks.left / .right = nil).
@@ -52,25 +53,25 @@
 --   v14 (JUDGE1): parchment = tint 1.0 + a cream lift (SiteTokens.parchLift) toward (205,175,120); sidebar ink #1a1006
 --     on every nav / summary path; heading #5a120c with a light emboss; selected row = cream wash + 1 px dark-gold
 --     rules + a dark-red strip; 18 px nav icons, trimmed, 1 px dark frame; the summary hangs under the nav rows (not
---     bottom-anchored); 24 px footer plate; tab strip at the content inset, dropped tabDrop px into the pane; medallion
---     at 80%; the close chain is template -> UIPanelCloseButton -> gold-X plate. The shared shell: gold Sync plate,
+--     bottom-anchored); 24 px footer plate; tab strip at the content inset, dropped tabDrop px into the pane; the
+--     close chain is template -> UIPanelCloseButton -> gold-X plate. The shared shell: gold Sync plate,
 --     native close, no corners.
 --   v15 (JUDGE3): AddTab{ card = } / AddSection{ card = } / o.sidebarCard: a sidebar context card under the summary
 --     ({ title, lines }, or a function(shell, tabId, sectionId) returning one; Shell:CardSpec / LayoutCard), refreshed
---     by Shell:RefreshSidebar(); a lone em-dash summary value (UI.ShellDash) is outlined on parchment; medallion 76%;
+--     by Shell:RefreshSidebar(); a lone em-dash summary value (UI.ShellDash) is outlined on parchment;
 --     currentSection is set before a section's onShow fires.
---   v16 (judge4): o.sidebarWatermark (true = "logo_m" | token | path): a faint (10%) watermark centred in the
---     parchment between the card and the Sync plate when that gap is > 140 px (Shell:LayoutWatermark, the shared
---     shell turns it on); card lines in full ink #1a1006, the soft line #4a3418; medallion art 63% of the socket,
---     lifted 1.5%, art + backing masked by one 86% disc centred on the socket.
+--   v16 (judge4): o.sidebarWatermark (true = "logo_m" | token | path; default off): a faint (10%) watermark centred
+--     in the parchment between the card and the Sync plate when that gap is > 140 px (Shell:LayoutWatermark; v18:
+--     the shared shell no longer turns it on); card lines in full ink #1a1006, the soft line #4a3418.
+--   v18 (owner): the portrait medallion (portraitArt / fitMedallion, every scale) is gone -- the socket is the
+--     template's own portrait texture again (o.portrait); the shared shell drops the sidebar watermark.
 --   v13: AddTab{ titleArt = token | path, ns = ownerNs } -- the tab's wordmark replaces the title art while it is
 --     selected (token via ns, then the shell's lookup); tabs without one fall back to o.titleArt, then the text title.
---     portraitArt is fitted: 80% (v13: 86%) of the measured socket, centred, explicitly circle-masked (shell.medallion).
 --     Sidebar tab heading: UI.ShellHeading (Cinzel Bold 16; v14: #5a120c + light emboss on parchment).
 --   v12: sections take onShow = function(frame, shell, sec) (fires each time the section comes into view); Toggle takes
 --   (tabId, sectionId).
 --   v12 shared shell: MK.UI.SharedShell(db, ns) -- the one lazily created, singleton World of Meta window (frame name
---   "WorldOfMetaShell", the /mkchrome look: portrait chrome, logo_main wordmark, logo_m medallion, bottom corners,
+--   "WorldOfMetaShell", the /mkchrome look: portrait chrome, logo_main wordmark, the template portrait socket,
 --   parchment sidebar, dark "Sync now" footer; v13: no crest flanks, per-tab wordmarks via UI.SharedTitleArt). The first caller's db wins and the shell is stored on
 --   MK.UI._sharedShell; later calls return it (a later ns is only added to the art lookup). Addons call
 --   MK.UI.RegisterSharedTab{...} / MK.UI.RegisterSharedSection{...} (same tables as shell:AddTab / AddSection); they
@@ -491,9 +492,7 @@ UI.ShellParchmentCandidates = { "achParchment", "achParchmentAlt" }
 -- v10: titleTuck 3 -> 6 (it9: the wordmark crowded the tab row); flank* = the o.flankArt crest geometry.
 -- v13: titleTokens = per-wordmark crop (rows of the converted 512 x 256 TGA that carry art, measured from its alpha)
 -- and source aspect; a tab / shell wordmark is fitted inside the logo_main box (titleWidth x titleWidth*titleAspect)
--- so swapping logos per tab never moves the tab strip. medallion* = the portraitArt fit: the art is drawn at
--- medallionScale of the measured portrait socket (portraitSocket when the socket reports no size), centred on it and
--- circle-masked with portraitMask; the socket texture itself becomes a dark, masked backing disc.
+-- so swapping logos per tab never moves the tab strip. (v18: the medallion* portrait fit is removed.)
 -- v13: flankArt is dormant (owner: no crests); the option still works but nothing in the kit asks for it.
 UI.ShellArt = { titleWidth = 240, titleAspect = 344 / 800, titleLift = 10, titleTuck = 6,
   flankSize = 52, flankInset = 64, flankGap = 18, flankHalo = 60, flankHaloAlpha = 0.25,
@@ -501,17 +500,7 @@ UI.ShellArt = { titleWidth = 240, titleAspect = 344 / 800, titleLift = 10, title
   titleTexCoord = { 0, 1, 18 / 256, 238 / 256 },
   corner = 72, cornerCoords = { { "TOPLEFT", 0, 1, 0, 1 }, { "TOPRIGHT", 1, 0, 0, 1 }, { "BOTTOMLEFT", 0, 1, 1, 0 },
     { "BOTTOMRIGHT", 1, 0, 1, 0 } },
-  closeSize = 24, closeStroke = 1.5, closeLen = 14,
-  -- v14: medallionScale 0.86 -> 0.80 (JUDGE1: the mask still trimmed the M's tips and feet at 86%)
-  -- v15: 0.80 -> 0.76 (JUDGE3 S8: the feet and the right leg still touched the inner rim)
-  -- v16 (judge4 owner defect): 0.76 -> 0.63. logo_m fills its square edge to edge, so an inscribed-circle mask the
-  -- art's own size always clipped the M's outer legs. The art is now drawn at 63% of the socket, lifted
-  -- medallionLift of the socket height, and both it and the dark backing are masked by ONE circle of medallionDisc
-  -- (86%) centred on the socket: art/disc = 0.73, ~13% of the disc diameter dark margin left and right.
-  -- v17 (judge5): 0.63 -> 0.58 (the M still crowded the rim): art/disc = 0.67, ~16% of the disc (~14% of the
-  -- socket) dark margin on every side.
-  medallionScale = 0.58, medallionDisc = 0.86, medallionLift = 0.015,
-  portraitSocket = 60, portraitMask = "Interface\\CharacterFrame\\TempPortraitAlphaMask" }
+  closeSize = 24, closeStroke = 1.5, closeLen = 14 }
 UI.ShellArt.titleTokens = {
   logo_main = { coords = UI.ShellArt.titleTexCoord, aspect = 344 / 800 },
   logo_bloodsports = { coords = { 0, 1, 3 / 256, 252 / 256 }, aspect = 389 / 800 },
@@ -804,78 +793,6 @@ end
 local Shell = {}
 Shell.__index = Shell
 
--- v13 portrait medallion. Measured (it11 crop): logo_m was SetTexture'd straight onto the template's portrait texture,
--- so the art filled 100% of the socket hole and the M's outer strokes ran into the ring (whatever round edge showed
--- came from the template / ring art, not from us). Here the art gets its own texture, centred on the socket, sized to
--- medallionScale of the socket's measured width (the portrait texture's, else its parent's, else portraitSocket), and
--- circle-masked by an explicit mask; the socket texture turns into a dark disc under it, masked the same way. Returns
--- nil (caller keeps the v8 path) when any piece is missing or errors, hiding whatever it made.
-local function circleMask(owner, target, center, size)
-  local okM, m = pcall(owner.CreateMaskTexture, owner)
-  if not okM or type(m) ~= "table" then return nil end
-  local ok = pcall(function()
-    if not setTex(m, UI.ShellArt.portraitMask, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE") then error("mask texture") end
-    if center and size then
-      m:SetSize(size, size)
-      m:SetPoint("CENTER", center, "CENTER", 0, 0)
-    else
-      m:SetAllPoints(target)
-    end
-    if type(target.AddMaskTexture) ~= "function" then error("no AddMaskTexture") end
-    target:AddMaskTexture(m)
-  end)
-  if not ok then pcall(m.Hide, m); return nil end
-  return m
-end
-
--- The socket's size: the portrait texture's own, else its container's (PortraitContainer) -- never the window itself
--- (a template that parents the portrait to the frame), and nothing over 2x portraitSocket (not a socket).
-local function socketSize(p, owner, frame)
-  local cap = 2 * UI.ShellArt.portraitSocket
-  for _, r in ipairs({ p, owner ~= frame and owner or false }) do
-    if type(r) == "table" then
-      local okW, w = pcall(r.GetWidth, r)
-      local okH, h = pcall(r.GetHeight, r)
-      w, h = okW and tonumber(w) or 0, okH and tonumber(h) or 0
-      if w > 0 and h > 0 and max(w, h) <= cap then return min(w, h), true end
-    end
-  end
-  return UI.ShellArt.portraitSocket, false
-end
-
-local function fitMedallion(p, path, frame)
-  local A = UI.ShellArt
-  local okP, owner = pcall(p.GetParent, p)
-  if not okP or type(owner) ~= "table" or type(owner.CreateTexture) ~= "function" then return nil end
-  local socket, measured = socketSize(p, owner, frame)
-  local size = floor(socket * A.medallionScale + 0.5)
-  local disc = floor(socket * (A.medallionDisc or 1) + 0.5)
-  local lift = floor(socket * (A.medallionLift or 0) + 0.5)
-  local okL, layer, sub = pcall(p.GetDrawLayer, p)
-  if not okL or type(layer) ~= "string" then layer, sub = "OVERLAY", 0 end
-  sub = min(7, (tonumber(sub) or 0) + 1)
-  local okT, t = pcall(owner.CreateTexture, owner, nil, layer, nil, sub)
-  if not okT or type(t) ~= "table" then return nil end
-  local placed = setTex(t, path) and pcall(function()
-    t:SetSize(size, size)
-    t:SetPoint("CENTER", p, "CENTER", 0, lift)
-    t:SetTexCoord(0, 1, 0, 1)
-  end)
-  -- v16: both masks are the disc circle centred on the SOCKET (not the art's own inscribed circle)
-  local mask = placed and circleMask(owner, t, p, disc) or nil
-  local backMask = mask and circleMask(owner, p, p, disc) or nil
-  if not backMask then
-    pcall(t.Hide, t)
-    if mask then pcall(mask.Hide, mask) end
-    return nil
-  end
-  local d = K().plateDarkFill
-  solid(p, { d[1], d[2], d[3], 1 })
-  return { texture = t, mask = mask, backing = p, backingMask = backMask, size = size, socket = socket,
-    measured = measured, path = path, disc = disc, lift = lift }
-end
-UI.ShellFitMedallion = fitMedallion
-
 -- v13 title art spec from an option value: true -> the logo_main token, a string with a slash -> a path, any other
 -- string -> a token name. nil for anything else.
 local function titleSpec(v)
@@ -985,16 +902,8 @@ function UI.Shell(o)
     p = p or part(f, "PortraitContainer", "portrait") or part(f, "portrait")
     if p and type(p.SetTexture) == "function" then
       hasPortrait = true
-      -- v8: o.portraitArt in the socket; v13: fitted (fitMedallion: 86% of the measured socket, centred, own circle
-      -- mask, dark masked backing). No mask API -> the v8 fill; no art -> the v2 portrait.
-      local pArt = artOpt(o.portraitArt, "logo_m")
-      local med = pArt and fitMedallion(p, pArt, f) or nil
-      if med then
-        shell.portraitArt, shell.medallion = pArt, med
-      elseif pArt and setTex(p, pArt) then
-        pcall(p.SetTexCoord, p, 0, 1, 0, 1)
-        shell.portraitArt = pArt
-      elseif not setTex(p, o.portrait or UI.Tex.unknown) then setTex(p, UI.Tex.unknown) end
+      -- v18 (owner): the template's own portrait texture, as in v2 -- no custom art texture, mask or disc
+      if not setTex(p, o.portrait or UI.Tex.unknown) then setTex(p, UI.Tex.unknown) end
       shell.portrait = p
     end
   end
@@ -2171,6 +2080,7 @@ end
 -- resolve through the shell's art resolver (the shared shell: every registered ns). Drawn at UI.ShellWatermark.alpha,
 -- UI.ShellWatermark.size px square, centred in that gap, only when the gap is taller than minSpace (and no sidebar
 -- extra is showing there); hidden otherwise. Sets tab.watermark = { shown, alpha, size, space, top, path }.
+-- Off unless o.sidebarWatermark is set (v18: nothing in the kit sets it).
 UI.ShellWatermark = { token = "logo_m", alpha = 0.10, size = 120, minSpace = 140 }
 function Shell:WatermarkPath()
   local v = self.opts.sidebarWatermark
@@ -2299,11 +2209,11 @@ function UI.SharedShell(db, ns, extra)
     sidebarWidth = UI.ShellMetrics.compactSidebar,
     portrait = "Interface\\Icons\\INV_Misc_Book_09", footerText = "Sync now", footerKind = "gold",
     chrome = "portrait", sidebar = "parchment", nativeButtons = false,
-    ns = shared.namespaces[1], art = sharedArt, titleArt = true, portraitArt = true,
-    -- v13: no flankArt (owner: the title band is medallion, wordmark, close only)
+    ns = shared.namespaces[1], art = sharedArt, titleArt = true,
+    -- v13: no flankArt (owner: the title band is portrait, wordmark, close only); v18: no portraitArt medallion
     footerTooltip = { "Sync now", { "Reloads the UI so the uploader can pick up your data." } },
     onFooter = sharedSync,
-    sidebarWatermark = true, -- v16 (judge4): faint logo_m in the parchment between the card and Sync
+    -- v18 (owner): no sidebarWatermark (the option stays in Shell, default off)
   }
   if type(extra) == "table" then for k2, v in pairs(extra) do o[k2] = v end end
   local shell = UI.Shell(o)
