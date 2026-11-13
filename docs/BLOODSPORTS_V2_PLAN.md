@@ -304,6 +304,16 @@ P4: `npm test` green; `/data` carries markets; site page renders books and P&L.
 P5: every wired texture loads in game (`/probe art bloodsports`), tile seam invisible.
 P6: 1.1.0/1.2.0 tags, release artifacts, in-game ring test recorded.
 
+## 9. Future — after tournaments (owner, 2026-11-10)
+
+**Guild league (Bloodsports, post-1.2):** guild BG + arena events — Gurubashi Arena (venue row already registered, `dormant`, needs activation) or a normal arena once the client has one. Guilds field teams, guild-vs-guild brackets, guild rankings. Builds on Bracket.lua (1.2).
+
+**World of Meta: Warbands (new addon, later):**
+- Groups world-PvP players into warbands (same-goal or private), guild warbands included.
+- Auto-invites warband members onto one layer; defined paths/routes (staged waypoints, waypoint previews).
+- Full story narration: Immersion-style talking heads — Alliance/Horde generals address players and call them to battle.
+- Players form public warbands around shared goals or private ones.
+
 ## 8. UI iteration scoreboard (pixel gate, live captures in docs/baseline/)
 
 | Iteration | Score | What moved it |
